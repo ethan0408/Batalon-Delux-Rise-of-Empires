@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BATALON DELUX — 1700s</title>
+<style>
+  :root{ --bg:#0d0b08; --panel:#1a160f; --panel2:#13100b; --edge:#3a3122; --text:#efe7d6; --muted:#a99a7e; --gold:#d8af4e; --good:#7bbf6a; --bad:#d9695f; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;overflow:hidden}
+  button,input{font-family:inherit}
+  #top{display:flex;align-items:center;gap:9px;padding:7px 12px;background:linear-gradient(#221c12,#15110b);border-bottom:1px solid var(--edge);height:50px}
+  .brand{font-weight:800;letter-spacing:.12em;font-size:15px;white-space:nowrap}
+  .brand small{color:var(--muted);font-weight:600;letter-spacing:.04em;font-size:9px;display:block;margin-top:-2px}
+  .res{display:flex;gap:7px;align-items:center}
+  .res .r{display:flex;align-items:center;gap:4px;background:#0e0b07;border:1px solid var(--edge);border-radius:6px;padding:4px 7px;font-size:12px;font-variant-numeric:tabular-nums}
+  .res .r b{font-weight:700}
+  .clock{display:flex;align-items:center;gap:5px;background:#0e0b07;border:1px solid var(--edge);border-radius:7px;padding:4px 7px}
+  .clock .date{font-variant-numeric:tabular-nums;font-weight:700;min-width:118px;text-align:center;font-size:12px}
+  .sp{display:flex;gap:3px}
+  .sp button,.ctl{cursor:pointer;border:1px solid var(--edge);background:#241d12;color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px;font-weight:700}
+  .sp button.on{background:var(--gold);color:#241a05;border-color:var(--gold)}
+  .grow{flex:1}
+  #stage{position:relative;width:100%;height:calc(100% - 50px);display:flex}
+  #mapwrap{flex:1;position:relative;overflow:hidden;background:radial-gradient(1000px 600px at 50% 0%,#15263a,#0a1622)}
+  canvas{display:block}
+  #panel{width:316px;background:var(--panel);border-left:1px solid var(--edge);display:flex;flex-direction:column;height:100%}
+  .tabs{display:flex;border-bottom:1px solid var(--edge);flex-wrap:wrap}
+  .tabs button{flex:1;cursor:pointer;border:none;background:transparent;color:var(--muted);padding:8px 3px;font-size:11px;font-weight:700;letter-spacing:.02em;border-bottom:2px solid transparent}
+  .tabs button.on{color:var(--gold);border-bottom-color:var(--gold);background:#1f1810}
+  .tabcontent{flex:1;overflow-y:auto;padding:12px}
+  .tabcontent::-webkit-scrollbar{width:8px}.tabcontent::-webkit-scrollbar-thumb{background:#3a3122;border-radius:4px}
+  h4.sec{margin:13px 0 6px;font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+  h4.sec:first-child{margin-top:0}
+  .card{background:var(--panel2);border:1px solid var(--edge);border-radius:8px;padding:9px 10px;margin-bottom:7px}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;margin:3px 0;color:var(--muted)}
+  .kv b{color:var(--text);font-variant-numeric:tabular-nums}
+  .btn{cursor:pointer;border:1px solid var(--edge);background:#241d12;color:var(--text);border-radius:7px;padding:8px 9px;font-size:12px;font-weight:600;width:100%;text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .btn:hover:not(:disabled){background:#2e2515;border-color:#574828}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn .cost{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .btn.gold{background:var(--gold);color:#241a05;border-color:var(--gold)}
+  .bar{height:7px;background:#0a0805;border-radius:4px;overflow:hidden;margin:4px 0}.bar>i{display:block;height:100%;border-radius:4px}
+  .qitem{font-size:12px;background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:6px 8px;margin-bottom:5px}
+  .pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700}
+  .st{display:flex;align-items:center;gap:7px;font-size:12.5px;margin:4px 0}
+  .flag{width:18px;height:12px;border-radius:2px;flex:0 0 auto;border:1px solid rgba(0,0,0,.4);display:inline-block;vertical-align:middle}
+  .st .nm{flex:1}.st .pv{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .st.me .nm{color:var(--gold);font-weight:700}.st.dead{opacity:.35}
+  .small{font-size:11px;color:var(--muted);line-height:1.5}
+  #armyPanel,#provPanel{position:absolute;left:12px;bottom:12px;width:270px;background:rgba(26,22,15,.97);border:1px solid var(--edge);border-radius:12px;padding:12px 13px;display:none}
+  #armyPanel.show,#provPanel.show{display:block}
+  #armyPanel h3{margin:0 0 6px;font-size:13px}
+  .comp{display:flex;gap:5px;margin:7px 0}
+  .comp .u{flex:1;text-align:center;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px}
+  .comp .u .n{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .comp .u .l{font-size:8px;color:var(--muted);letter-spacing:.02em}
+  .arow{display:flex;gap:6px;margin-top:7px}.arow .btn{margin-bottom:0;text-align:center;justify-content:center}
+  #feed{position:absolute;right:12px;bottom:46px;width:228px;display:flex;flex-direction:column;gap:3px;cursor:pointer;z-index:7}
+  #feed .fi{background:rgba(20,16,10,.92);border:1px solid var(--edge);border-radius:6px;padding:4px 8px;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hexInfo{position:absolute;pointer-events:none;display:none;background:rgba(20,16,10,.96);border:1px solid var(--edge);border-radius:7px;padding:6px 9px;font-size:11.5px;z-index:8;line-height:1.45;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+  #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;max-width:460px;background:rgba(26,22,15,.86);border:1px solid var(--edge);border-radius:9px;padding:6px 12px;font-size:11px;color:var(--muted);text-align:center}
+  #hint b{color:var(--text)}
+  #toast{position:absolute;left:50%;transform:translateX(-50%);top:10px;display:flex;flex-direction:column;gap:5px;align-items:center;pointer-events:none}
+  .tmsg{background:rgba(30,25,16,.96);border:1px solid var(--edge);border-radius:8px;padding:6px 12px;font-size:12px;animation:fade 5s forwards;max-width:420px;text-align:center}
+  @keyframes fade{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:none}82%{opacity:1}100%{opacity:0}}
+  .overlay{position:absolute;inset:0;background:rgba(8,6,3,.86);display:none;align-items:center;justify-content:center;z-index:20}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:22px 26px;max-width:560px;max-height:88%;overflow-y:auto}
+  .modal h2{margin:0 0 4px;font-size:22px;letter-spacing:.04em;text-align:center}
+  .modal p{color:var(--muted);font-size:13px;margin:6px 0 14px;line-height:1.55}
+  .picks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .pick{cursor:pointer;border:1px solid var(--edge);background:#13100b;border-radius:10px;padding:10px 11px}
+  .pick:hover{border-color:var(--gold);transform:translateY(-1px)}
+  .pick .ph{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;margin-bottom:3px}
+  .pick .pd{font-size:10.5px;color:var(--muted);line-height:1.4}
+  .modal button.go{cursor:pointer;border:none;border-radius:9px;padding:10px 22px;font-weight:800;background:var(--gold);color:#241a05;font-size:14px;margin:8px auto 0;display:block}
+  /* focus tree */
+  #focusScreen{position:absolute;inset:0;background:rgba(8,6,3,.94);display:none;z-index:30;flex-direction:column}
+  #focusScreen.show{display:flex}
+  .fhead{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--edge)}
+  .fhead h2{margin:0;font-size:18px;letter-spacing:.06em}
+  .fhead .x{margin-left:auto}
+  #ftree{flex:1;overflow:auto;position:relative}
+  #ftreeInner{position:relative}
+  .fnode{position:absolute;width:150px;min-height:62px;border:1px solid var(--edge);border-radius:9px;background:#1c1710;padding:7px 9px;cursor:pointer;transition:.12s}
+  .fnode:hover{border-color:var(--gold)}
+  .fnode .fn{font-size:12px;font-weight:700;line-height:1.15;margin-bottom:3px}
+  .fnode .fd{font-size:9.5px;color:var(--muted);line-height:1.3}
+  .fnode.done{background:#16240f;border-color:#3a6a2a}
+  .fnode.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+  .fnode.locked{opacity:.45;cursor:default}
+  .fnode.war{background:#241410}
+  .fnode.secret{background:#2a2410;border-color:#d8af4e;box-shadow:0 0 8px rgba(216,175,78,.3)}
+  .fnode .ft{position:absolute;top:5px;right:7px;font-size:9px;color:var(--muted)}
+  .fnode .warpill{display:inline-block;font-size:8.5px;background:#5a1f1a;color:#ffb3ab;border-radius:8px;padding:0 5px;margin-top:3px}
+</style>
+</head>
+<body>
+  <div id="top">
+    <div class="brand">BATALON DELUX<small id="brandsub">1700 · age of bayonets</small></div>
+    <div class="res" id="resbar"></div>
+    <div class="grow"></div>
+    <div class="clock"><div class="date" id="date">—</div><span id="season" style="font-size:11px;color:var(--muted);min-width:62px;text-align:center"></span>
+      <div class="sp"><button id="pause">❚❚</button><button data-spd="1" class="on">1×</button><button data-spd="2">2×</button><button data-spd="3">3×</button><button data-spd="5">5×</button></div>
+    </div>
+    <button class="ctl" id="focusBtn" title="National Focus">🎯</button>
+    <button class="ctl" id="designBtn" title="Design Bureau">🛠️</button>
+    <button class="ctl" id="genBtn" title="Marshals">🎖</button>
+    <button class="ctl" id="howtoBtn" title="How to Play">❓</button>
+    <button class="ctl" id="annalsBtn" title="Annals / History">📖</button>
+    <button class="ctl" id="worldBtn" title="World Codex">📜</button>
+    <button class="ctl" id="rotL" title="Rotate (Q)">⟲</button>
+    <button class="ctl" id="rotR" title="Rotate (E)">⟳</button>
+    <button class="ctl" id="saveBtn" title="Save campaign">💾</button>
+    <button class="ctl" id="loadBtn" title="Load campaign">📂</button>
+    <button class="ctl" id="restart">Restart</button>
+  </div>
+  <div id="stage">
+    <div id="mapwrap">
+      <canvas id="cv"></canvas>
+      <div id="armyPanel"></div>
+      <div id="provPanel"></div>
+      <div id="toast"></div>
+      <div id="hexInfo"></div>
+      <div id="feed" title="Recent dispatches — click for the full Annals"></div>
+      <div id="hint"><b>Click a regiment → click a province to march.</b> <b>Shift-click</b> = send every army on one offensive. <b>A</b> cycles armies, hover for details, <b>Q/E</b> rotate, 💾 save. You need a <i>casus belli</i> (🎯 Focus tree or Diplomacy) to invade.</div>
+      <div id="focusScreen">
+        <div class="fhead"><h2 id="ftitle">National Focus</h2><span class="small" id="fstatus"></span><button class="ctl x" id="fclose">Close</button></div>
+        <div id="ftree"><div id="ftreeInner"></div></div>
+      </div>
+    </div>
+    <div id="panel">
+      <div class="tabs">
+        <button data-tab="overview" class="on">NATION</button>
+        <button data-tab="war">WAR</button>
+        <button data-tab="research">TECH</button>
+        <button data-tab="politics">POLITICS</button>
+        <button data-tab="diplo">DIPLO</button>
+      </div>
+      <div class="tabcontent" id="tabcontent"></div>
+    </div>
+  </div>
+
+  <div class="overlay show" id="titleScreen"><div class="modal" style="text-align:center;max-width:540px;background:radial-gradient(600px 300px at 50% 0%,#221c12,#15110b)">
+    <div style="font-size:38px;font-weight:800;letter-spacing:.16em;margin:6px 0 0">BATALON DELUX</div>
+    <div style="color:var(--gold);letter-spacing:.16em;font-size:15px;margin-bottom:16px">⚔ RISE OF EMPIRES ⚔</div>
+    <p style="margin:0 auto 20px;max-width:440px">Seven powers vie for the continent of <b>Aurca</b> in an age of line infantry, cannon and sail. Forge a cabinet, pursue a national focus, fund rebellions, command armies and fleets, and lead your nation to dominion — or watch it shatter.</p>
+    <button class="go" id="tNew" style="width:64%;margin:0 auto 9px">⚔ New Campaign</button>
+    <button class="go" id="tCont" style="width:64%;margin:0 auto 9px;background:#241d12;color:var(--text);border:1px solid var(--edge)">📂 Continue Last Campaign</button>
+    <button class="go" id="tHelp" style="width:64%;margin:0 auto;background:#241d12;color:var(--text);border:1px solid var(--edge)">❓ How to Play</button>
+  </div></div>
+  <div class="overlay" id="pickScreen"><div class="modal">
+    <h2>Choose your nation</h2>
+    <p>The continent of <b>Aurca</b>, year 1700. Seven powers eye one another across mountain, plain and sea. Choose your crown — read each nation's story before you commit.</p>
+    <div class="picks" id="picks"></div>
+  </div></div>
+  <div class="overlay" id="codex"><div class="modal" id="codexBody"></div></div>
+  <div class="overlay" id="annals"><div class="modal" id="annalsBody" style="text-align:center"></div></div>
+  <div class="overlay" id="generals"><div class="modal" id="generalsBody" style="text-align:center"></div></div>
+  <div class="overlay" id="howto"><div class="modal" id="howtoBody" style="max-width:560px"></div></div>
+  <div class="overlay" id="tutorial" style="z-index:25"><div class="modal" id="tutBody" style="max-width:440px;text-align:center"></div></div>
+  <div class="overlay" id="designScreen"><div class="modal" id="designBody"></div></div>
+  <div class="overlay" id="eventScreen"><div class="modal" id="eventBody" style="text-align:center;max-width:470px"></div></div>
+  <div class="overlay" id="overlay"><div class="modal" style="text-align:center"><h2 id="ovTitle">Victory</h2><p id="ovText"></p><button class="go" id="ovBtn">New campaign</button></div></div>
+
+<script>
+// ===================================================== MAP
+const MAP=[
+  "..............................",
+  "..............................",
+  "..........nnnn................",
+  ".......nnnnnnnCCC.............",
+  "..AAAnnnnnnnnnCCCCn...........",
+  "..AAAnnnnnnnnnCCCCnn..........",
+  "..AAAnnnnnnnnnCCCCnnn.........",
+  "..AAAnnnnnnnnnnnnnOOOO........",
+  "..nnnnnnnnnnJJJnnnOOOO.....PP.",
+  "..nnnnnnnnnnJJJnnnOOOO.....PP.",
+  "..nnnnnnnnnnJJJnnnOOOO........",
+  "..nnnnnnnnnnnnnnnnnnnn........",
+  "..nnnnnnnRRRRRRRIIIInn........",
+  "...nnnnnnUURRRRRIIIIM.........",
+  "....nnnnnUURRRRRIIII..........",
+  ".....nnnnRRRRRRRIII...........",
+  ".......nnRRRRRRRn.............",
+  "..........nnnn................"];
+const COLS=MAP[0].length,ROWS=MAP.length,SIZE=17,SQRT3=Math.sqrt(3),MARGIN=34,TOPPAD=50;
+const LET={A:5,C:2,O:4,J:6,R:3,U:3,I:7,M:7,P:1};
+const ELEVR={R:5.0,U:4.5,A:4.0,C:3.2,J:2.4,O:1.8,I:2.2,M:2.0,P:1.2},ELEV_UNIT=7;
+function hash2(c,r){let t=((c*73856093)^(r*19349663))>>>0;t=Math.imul(t^(t>>>15),t|1);return((t>>>0)%1000)/1000;}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);let R=(n>>16)&255,G=(n>>8)&255,B=n&255;R=Math.min(255,R*f)|0;G=Math.min(255,G*f)|0;B=Math.min(255,B*f)|0;return`rgb(${R},${G},${B})`;}
+const SYL_A=["Bel","Cor","Dun","Far","Gal","Hal","Kar","Lon","Mor","Ost","Pra","Rav","Sel","Tor","Val","Wex","Ash","Brae","Cael","Dra","Esk","Fenn","Grim","Ils","Mar","Vyr"];
+const SYL_B=["mont","ford","burgh","heim","wick","dale","gard","stad","mere","haven","cross","field","reach","fell","moor","bury","cliff","port","holt","stead","holm","wold"];
+function provName(c,r){const a=Math.floor(hash2(c*7+1,r*7+2)*SYL_A.length)%SYL_A.length;const b=Math.floor(hash2(c*13+3,r*13+5)*SYL_B.length)%SYL_B.length;return SYL_A[a]+SYL_B[b];}
+const SEASONS=[{n:"Winter",i:"❄"},{n:"Spring",i:"🌱"},{n:"Summer",i:"☀"},{n:"Autumn",i:"🍂"}];
+function seasonIdx(t){const m=Math.floor((Math.floor(t)%365)/30.42);return (m>=11||m<2)?0:m<5?1:m<8?2:3;}
+
+// ===================================================== ERA DATA (1700s)
+const IDEO={
+  absolutism:{t:"Absolute Monarchy",leader:"King",atk:.16,def:.05,prod:0,res:0,mp:.20,con:.05},
+  constitutional:{t:"Constitutional Monarchy",leader:"King-in-Parliament",atk:0,def:.06,prod:.16,res:.08,mp:0,con:.10},
+  republic:{t:"Enlightened Republic",leader:"First Consul",atk:.04,def:.04,prod:.08,res:.42,mp:-.05,con:.10},
+  empire:{t:"Empire",leader:"Emperor",atk:.18,def:.06,prod:.05,res:0,mp:.16,con:.10},
+  mercantile:{t:"Mercantile League",leader:"Lord Mayor",atk:0,def:.04,prod:.26,res:.06,mp:0,con:.22},
+  autocracy:{t:"Tsarist Autocracy",leader:"Tsar",atk:.10,def:.12,prod:0,res:-.06,mp:.42,con:.05},
+  feudal:{t:"Feudal Realm",leader:"High Lord",atk:.05,def:.10,prod:.04,res:-.12,mp:.16,con:0},
+  warlord:{t:"Warlord Band",leader:"Warlord",atk:.14,def:0,prod:-.12,res:-.18,mp:.10,con:-.10},
+  jacobin:{t:"Jacobin Republic",leader:"Citizen-President",atk:.18,def:0,prod:.05,res:.10,mp:.30,con:0},
+  anarchist:{t:"Free Communes",leader:"Spokesman",atk:.10,def:.16,prod:-.08,res:0,mp:.26,con:-.18},
+  zealot:{t:"Zealot Theocracy",leader:"Prophet",atk:.24,def:.10,prod:-.05,res:-.16,mp:.30,con:0},
+};
+const STRANGE=["jacobin","anarchist","zealot"];
+const ADVISORS=[
+  {id:"marshal",slot:"Grand Marshal",d:"+10% army attack",cost:55},
+  {id:"treasurer",slot:"Lord Treasurer",d:"+14% gold income",cost:55},
+  {id:"philosopher",slot:"Court Philosopher",d:"+18% knowledge",cost:55},
+  {id:"quartermaster",slot:"Quartermaster-General",d:"+supply & construction",cost:55},
+  {id:"spymaster",slot:"Spymaster",d:"funded uprisings grow faster & cheaper",cost:55},
+  {id:"diplomat",slot:"Chief Diplomat",d:"relations drift in your favour",cost:55},
+];
+const ECO_LAWS={peace:{nm:"Peacetime Economy",d:"balanced",mil:1.0,prod:1.0,stab:0},
+  partial:{nm:"Partial Mobilisation",d:"+25% muster, −stability",mil:1.25,prod:1.0,stab:-0.012},
+  war:{nm:"War Economy",d:"+55% muster & +production, −−stability",mil:1.55,prod:1.12,stab:-0.026}};
+const CONS_LAWS={volunteer:{nm:"Volunteer Army",d:"few recruits, +stability",mp:0.7,stab:0.012},
+  limited:{nm:"Limited Conscription",d:"balanced",mp:1.0,stab:0},
+  extensive:{nm:"Extensive Conscription",d:"+50% recruits, −stability",mp:1.5,stab:-0.016},
+  total:{nm:"Total Mobilisation",d:"+100% recruits, −−stability",mp:2.0,stab:-0.03}};
+function hasAdv(n,id){return S[n].cabinet.has(id);}
+const RESOURCES=["saltpetre","iron","horses","timber"];
+const RES_ICON={saltpetre:"🜍",iron:"⛏",horses:"🐎",timber:"🪵"};
+const RES_NAME={saltpetre:"Saltpetre",iron:"Iron",horses:"Horses",timber:"Timber"};
+const UNIT_RES={line:{saltpetre:1,iron:0.5},gren:{saltpetre:1.2,iron:0.6},cannon:{saltpetre:1.5,iron:1.5},horse:{horses:2,iron:0.4},ship:{timber:2,iron:1},guard:{saltpetre:1.2,iron:1},liner:{timber:3,iron:1.5},air:{iron:1.5,saltpetre:0.5},cland:{saltpetre:1,iron:0.6},cship:{timber:2,iron:1}};
+// id:1 Pirati 2 Carak 3 Rigan 4 Ostana 5 Aveon 6 Javein 7 Illyria
+const NATIONS=[null,
+  {name:"Pirati", col:"#a05fd6",col2:"#7d44ab"},
+  {name:"Carak",  col:"#d6483f",col2:"#a82f2b"},
+  {name:"Rigan",  col:"#3fae6a",col2:"#2b8050"},
+  {name:"Ostana", col:"#e0902b",col2:"#b06d18"},
+  {name:"Aveon",  col:"#3f86e0",col2:"#2b5fa8"},
+  {name:"Javein", col:"#27b8b8",col2:"#1c8585"},
+  {name:"Illyria",col:"#d76fae",col2:"#a84d85"},
+  {name:"Cruv",   col:"#5fd0b4",col2:"#3a9c84"},
+  {name:"Mangobi",col:"#e6943f",col2:"#b06a22"},
+];
+const NIDS=[1,2,3,4,5,6,7,8,9];
+const PLAYABLE=[1,2,3,4,5,6,7];
+const LORE={
+  1:{cap:"Pirat's Reach",ideo:"warlord",claims:[],rivals:[2,4],friends:[],
+     blurb:"A warlord isle that broke away from Carak in a mutiny of privateers — far out beyond the northern sea. The Pirati are not yet a true country: they have no king, no government, no standard musket, scarcely a dockyard. Their captains plunder Ostanan and Carrish shipping and dream of forging a nation of their own — if they can first agree who shall lead it."},
+  2:{cap:"Carngard",ideo:"absolutism",claims:[4,7],rivals:[4,7,6,1],friends:[],
+     blurb:"The crowned heart of the old Osto-Carakian Empire, which shattered into Carak, Ostana and Illyria. Carak's kings have never accepted the loss and dream of restoring the imperial crown by sword or by coin. No one on the continent trusts Carak — and well they shouldn't. Its path lies between domination of the weak and mastery of trade."},
+  3:{cap:"Righolt",ideo:"autocracy",claims:[6],rivals:[6,7],friends:[],
+     blurb:"A vast, cold autocracy ruled by a Tsar and worked by serfs — the Kingdom of Rieglen grown into an empire after it swallowed the realm of Cruv. Rigan is backward in the sciences but bottomless in manpower, and only Javein shares its long western frontier. Whether to free its serfs and modernise, or bind them and endure, is the question that haunts its court."},
+  4:{cap:"Ostan",ideo:"constitutional",claims:[],rivals:[2,1],friends:[6],
+     blurb:"A successor of the old Empire, now a constitutional monarchy of merchants and assemblies. The Ostanan people hail from a homeland island in the northern sea, though their wealth and power lie on the mainland. Forever raided by Pirati corsairs and threatened by Carak's claim of reunion, Ostana keeps faith with Javein and seeks a coalition against Carngard."},
+  5:{cap:"Avenmoor",ideo:"republic",claims:[],rivals:[],friends:[],
+     blurb:"A hermit republic far out on the western shelf, beyond the reach of any neighbour. Aveon shuns the quarrels of the continent and pours its genius into the academies — where its philosophers tinker with balloons and the dream of human flight. It wants nothing from the world but to be left alone… and to rise above it all."},
+  6:{cap:"Javeford",ideo:"feudal",claims:[],rivals:[3],friends:[4],
+     blurb:"An old feudal realm, the only land to share a frontier with the Rigan bear. Javein has fallen behind the age — its muskets are dated, its lords cling to privilege while its peasants starve, and an uprising smoulders. It must choose between noble and commoner, race to catch up in the sciences, and find friends quickly, for the Tsar's armies are massing on the border."},
+  7:{cap:"Illyrium",ideo:"empire",claims:[3],rivals:[2,3],friends:[],
+     blurb:"The southern successor-empire of the Osto-Carakian line, and Carak's bitter rival for the imperial title. A generation ago Illyria conquered the Mangobi, who loathe their masters still and seethe under imperial rule. Now the Emperor eyes the mountain passes of Rigan and styles himself heir of all the old dominion."},
+  8:{cap:"Cruvhold",ideo:"feudal",claims:[],rivals:[3],friends:[],
+     blurb:"The old realm of Cruv, swallowed by the Rigan tsars. Its people have not forgotten their lost liberty, and wait only for the chance to throw off the Tsar's yoke."},
+  9:{cap:"Manjari",ideo:"republic",claims:[],rivals:[7],friends:[],
+     blurb:"The Mangobi were conquered by Illyria a generation ago and have never bent the knee in their hearts. Given the slightest opening, they will rise in revolt for a free Mangobi."},
+};
+NIDS.forEach(n=>NATIONS[n].ideo=LORE[n].ideo);
+
+const UNIT={
+  line:  {name:"Line Infantry",hp:26,org:56,atk:8, def:17,spd:1.0,mp:25,build:16,tech:"musket", role:"foot",ab:"INF"},
+  gren:  {name:"Grenadiers",   hp:24,org:50,atk:14,def:14,spd:1.0,mp:30,build:26,tech:"musket", role:"shock",ab:"GRN"},
+  cannon:{name:"Artillery",    hp:12,org:18,atk:23,def:5, spd:0.7,mp:8, build:30,tech:"gunnery",role:"gun",ab:"CAN"},
+  horse: {name:"Cavalry",      hp:20,org:46,atk:15,def:9, spd:1.7,mp:18,build:40,tech:"horse",  role:"cav",ab:"CAV"},
+  ship:  {name:"Frigate",      hp:26,org:42,atk:18,def:16,spd:2.3,mp:12,build:36,tech:"gunnery",role:"navy",ab:"SHP"},
+  guard: {name:"Royal Guards", hp:28,org:62,atk:13,def:21,spd:1.0,mp:35,build:30,tech:"musket", role:"shock",ab:"GDS",req:{tech:"musket",lvl:2}},
+  liner: {name:"Ship of the Line",hp:42,org:52,atk:27,def:25,spd:1.8,mp:22,build:62,tech:"gunnery",role:"navy",ab:"SOL",req:{tech:"gunnery",lvl:2}},
+  air:   {name:"Aeronaut Corps",hp:9,org:34,atk:4,def:3,spd:1.3,mp:14,build:36,tech:"doctrine",role:"air",ab:"AIR",req:{tech:"gunnery",lvl:3}},
+  cland: {name:"Custom Regiment",tech:"musket", role:"foot",ab:"NMR",custom:"land"},
+  cship: {name:"Custom Warship", tech:"gunnery",role:"navy",ab:"CWS",custom:"ship"},
+};
+const CUSTOM_BASE={land:{hp:22,org:46,atk:9,def:14,spd:1.0,mp:24,build:22},ship:{hp:30,org:44,atk:20,def:18,spd:2.0,mp:18,build:42}};
+function unitStat(n,k,f){const u=UNIT[k];if(!u.custom)return u[f];const c=S[n].des.custom[u.custom],B=CUSTOM_BASE[u.custom];
+  if(u.custom==='land'){const pts=c.fpw+c.arm+c.tuf+c.drl+c.mob;switch(f){case'atk':return B.atk+c.fpw*2;case'def':return B.def+c.arm*3;case'hp':return B.hp+c.tuf*3;case'org':return B.org+c.drl*4;case'spd':return B.spd+c.mob*0.15;case'mp':return B.mp+pts*2;case'build':return B.build+pts*2;default:return B[f];}}
+  const pts=c.gun+c.hul+c.sai+c.crw;switch(f){case'atk':return B.atk+c.gun*3;case'def':return B.def+c.hul*3;case'hp':return B.hp+c.hul*2;case'org':return B.org+c.crw*4;case'spd':return B.spd+c.sai*0.2;case'mp':return B.mp+pts*2;case'build':return B.build+pts*3;default:return B[f];}}
+function unitName(n,k){return UNIT[k].custom?S[n].des.custom[UNIT[k].custom].name:UNIT[k].name;}
+function unitUnlocked(n,k){const u=UNIT[k];return !u.req || S[n].tech[u.req.tech]>=u.req.lvl;}
+const UKEYS=Object.keys(UNIT);
+const TECHS={
+  musket:{name:"Musketry & Bayonet",max:6,desc:"+9% infantry attack & defence"},
+  gunnery:{name:"Gunnery",max:6,desc:"+10% artillery firepower"},
+  horse:{name:"Horse & Sabre",max:6,desc:"+10% cavalry shock"},
+  industry:{name:"Manufacturing",max:6,desc:"+8% production & construction"},
+  doctrine:{name:"Drill & Tactics",max:6,desc:"+5% organisation & combined arms"},
+};
+const COMBAT_K=0.10,HP_BLEED=0.45,ORG_REGEN=5,ENTRENCH_MAX=0.5,ENTRENCH_RATE=0.05;
+const MOVE_DAYS=1.9,SEA_MULT=2.4,DAYS_PER_SEC=0.25,CONSTRUCT_BASE=0.5,MILBUILD_BASE=0.5;
+const TERR={
+  plain:{nm:"Plains",mv:1.0,def:0,gly:""},
+  forest:{nm:"Forest",mv:1.5,def:0.35,gly:"♣"},
+  hill:{nm:"Hills",mv:1.45,def:0.45,gly:"⌃"},
+  mtn:{nm:"Mountains",mv:2.2,def:0.75,gly:"▲"},
+  marsh:{nm:"Marsh",mv:1.8,def:0.15,gly:"≋"},
+  river:{nm:"River Valley",mv:1.6,def:0.40,gly:"≈"},
+};
+
+// ===================================================== FOCUS TREE
+// columns: 0 Army, 1 Economy, 2 Politics, 3 War(nation-specific)
+const A=(nn,t)=>S[nn].cb.add(t), F=(nn,k)=>S[nn].foc[k]=1;
+const TREES={
+ // ---- CARAK: restore the empire; dominate vs trade ----
+ 2:[
+  {id:"c_a1",col:0,tier:0,name:"The Carrish Drill",days:40,desc:"+1 Drill",eff:n=>S[n].tech.doctrine++},
+  {id:"c_a2",col:0,tier:1,req:["c_a1"],name:"Bayonet Columns",days:50,desc:"+10% attack",eff:n=>F(n,'atk')},
+  {id:"c_a3",col:0,tier:2,req:["c_a2"],name:"Massed Batteries",days:50,desc:"+1 Gunnery",eff:n=>S[n].tech.gunnery++},
+  {id:"c_e1",col:1,tier:0,name:"Imperial Treasury",days:35,desc:"+90 gold",eff:n=>S[n].pp+=90},
+  {id:"c_e2",col:1,tier:1,req:["c_e1"],name:"Manufactories of Carngard",days:50,desc:"+1 manufactory",eff:n=>{S[n].civ++;F(n,'prod');}},
+  {id:"c_e3",col:1,tier:2,req:["c_e2"],name:"Royal Arsenals",days:55,desc:"+1 arsenal",eff:n=>S[n].mil++},
+  {id:"c_p1",col:2,tier:0,name:"Memory of the Empire",days:40,desc:"The dream of reunion stirs",eff:n=>F(n,'mp')},
+  {id:"c_dom",col:2,tier:1,req:["c_p1"],name:"Domination of the Weak",days:60,desc:"The mailed fist: +12% attack, +manpower",eff:n=>{F(n,'atk');F(n,'spirit');}},
+  {id:"c_trd",col:2,tier:2,req:["c_p1"],name:"Mastery of Trade",days:60,desc:"The open hand: +15% gold & knowledge",eff:n=>{F(n,'trade');S[n].civ++;}},
+  {id:"c_w0",col:3,tier:0,name:"Restore the Imperial Crown",days:45,desc:"Lay claim to the old Empire",eff:()=>{}},
+  {id:"c_w1",col:3,tier:1,req:["c_w0"],war:4,name:"Reclaim Ostana",days:55,desc:"Casus belli on Ostana",eff:n=>A(n,4)},
+  {id:"c_w2",col:3,tier:2,req:["c_w0"],war:7,name:"Reclaim Illyria",days:55,desc:"Casus belli on Illyria",eff:n=>A(n,7)},
+  {id:"c_w3",col:3,tier:3,req:["c_w1"],war:6,name:"Subjugate Javein",days:50,desc:"Casus belli on Javein",eff:n=>A(n,6)},
+  {id:"c_w4",col:3,tier:4,req:["c_w2"],war:1,name:"Hunt the Renegades",days:50,desc:"Casus belli on Pirati",eff:n=>A(n,1)},
+  {id:"c_secret",col:2,tier:3,secret:true,reveal:n=>S[n].focDone.has('c_w1')&&S[n].focDone.has('c_w2'),req:["c_w1","c_w2"],name:"⚜ The Lost Heir",days:80,desc:"A secret claimant emerges to reunite the old crowns — restore the Osto-Carakian Empire. +200 gold, war goals on every realm.",eff:n=>{F(n,'spirit');F(n,'atk');S[n].pp+=200;[1,3,4,5,6,7].forEach(t=>S[n].cb.add(t));if(n===PLAYER)toast('⚜ THE EMPIRE IS RESTORED — every old realm is claimed!');}},
+ ],
+ // ---- OSTANA: constitution, homeland isles, anti-Carak ----
+ 4:[
+  {id:"o_a1",col:0,tier:0,name:"Coastal Batteries",days:40,desc:"+1 Gunnery",eff:n=>S[n].tech.gunnery++},
+  {id:"o_a2",col:0,tier:1,req:["o_a1"],name:"Marine Regiments",days:50,desc:"+10% attack (landings)",eff:n=>F(n,'atk')},
+  {id:"o_e1",col:1,tier:0,name:"Merchant Charters",days:35,desc:"+80 gold",eff:n=>S[n].pp+=80},
+  {id:"o_e2",col:1,tier:1,req:["o_e1"],name:"Counting Houses",days:50,desc:"+1 manufactory, +trade",eff:n=>{S[n].civ++;F(n,'trade');}},
+  {id:"o_e3",col:1,tier:2,req:["o_e2"],name:"Naval Yards",days:55,desc:"+1 arsenal",eff:n=>S[n].mil++},
+  {id:"o_p1",col:2,tier:0,name:"The People's Assembly",days:45,desc:"+manpower & stability",eff:n=>F(n,'mp')},
+  {id:"o_p2",col:2,tier:1,req:["o_p1"],name:"A Bill of Rights",days:55,desc:"+knowledge; enables reform",eff:n=>F(n,'reform')},
+  {id:"o_w0",col:3,tier:0,name:"The Northern Homeland",days:45,desc:"Fortify the ancestral isles: +defence",eff:n=>F(n,'def')},
+  {id:"o_w1",col:3,tier:1,req:["o_w0"],war:2,name:"Coalition Against Carak",days:55,desc:"Casus belli on Carak; rally the powers",eff:n=>{A(n,2);F(n,'spirit');}},
+  {id:"o_w2",col:3,tier:2,req:["o_w0"],war:1,name:"Suppress the Corsairs",days:50,desc:"Casus belli on Pirati",eff:n=>A(n,1)},
+ ],
+ // ---- ILLYRIA: empire, Mangobi question, imperial rivalry ----
+ 7:[
+  {id:"i_a1",col:0,tier:0,name:"The Illyrian Legions",days:40,desc:"+1 Drill",eff:n=>S[n].tech.doctrine++},
+  {id:"i_a2",col:0,tier:1,req:["i_a1"],name:"Grenadier Guard",days:50,desc:"+10% attack",eff:n=>F(n,'atk')},
+  {id:"i_e1",col:1,tier:0,name:"Imperial Levies",days:35,desc:"+50 recruits",eff:n=>S[n].mp+=50},
+  {id:"i_e2",col:1,tier:1,req:["i_e1"],name:"Manufactories",days:50,desc:"+1 manufactory",eff:n=>{S[n].civ++;F(n,'prod');}},
+  {id:"i_e3",col:1,tier:2,req:["i_e2"],name:"Imperial Arsenals",days:55,desc:"+1 arsenal",eff:n=>S[n].mil++},
+  {id:"i_p1",col:2,tier:0,name:"The Mangobi Question",days:40,desc:"What to do with the conquered Mangobi?",eff:()=>{}},
+  {id:"i_int",col:2,tier:1,req:["i_p1"],name:"Integrate the Mangobi",days:60,desc:"Assimilate them: +manpower & stability",eff:n=>{F(n,'mp');S[n].mp+=40;}},
+  {id:"i_sup",col:2,tier:2,req:["i_p1"],name:"Iron Rule in Mangobi",days:60,desc:"Crush dissent: +defence, +manpower",eff:n=>{F(n,'def');F(n,'spirit');}},
+  {id:"i_free",col:2,tier:3,req:["i_p1"],name:"Free Mangobi",days:55,desc:"Grant the Mangobi a homeland of their own as a loyal vassal — and end their unrest forever.",eff:n=>{liberate(9,n,true);}},
+  {id:"i_w0",col:3,tier:0,name:"Heir to the Empire",days:45,desc:"Claim the imperial succession",eff:()=>{}},
+  {id:"i_w1",col:3,tier:1,req:["i_w0"],war:2,name:"Rival of Carak",days:55,desc:"Casus belli on Carak",eff:n=>A(n,2)},
+  {id:"i_w2",col:3,tier:2,req:["i_w0"],war:3,name:"The Mountain Passes",days:55,desc:"Casus belli on Rigan",eff:n=>A(n,3)},
+  {id:"i_w3",col:3,tier:3,req:["i_w1"],war:4,name:"Southern Dominion",days:50,desc:"Casus belli on Ostana",eff:n=>A(n,4)},
+ ],
+ // ---- RIGAN: tsarist autocracy, serfs, modernise, Cruv ----
+ 3:[
+  {id:"r_a1",col:0,tier:0,name:"Western Drillmasters",days:45,desc:"+1 Drill (catch up)",eff:n=>S[n].tech.doctrine++},
+  {id:"r_a2",col:0,tier:1,req:["r_a1"],name:"Reform the Artillery",days:50,desc:"+1 Gunnery",eff:n=>S[n].tech.gunnery++},
+  {id:"r_a3",col:0,tier:2,req:["r_a2"],name:"Cossack Host",days:50,desc:"+1 Cavalry",eff:n=>S[n].tech.horse++},
+  {id:"r_e1",col:1,tier:0,name:"The Serf Levy",days:40,desc:"+70 recruits, +manpower",eff:n=>{S[n].mp+=70;F(n,'mp');}},
+  {id:"r_emn",col:1,tier:1,req:["r_e1"],name:"Emancipation of the Serfs",days:70,desc:"Modernise: +knowledge & production",eff:n=>{F(n,'reform');S[n].rp+=40;S[n].civ++;}},
+  {id:"r_srf",col:1,tier:2,req:["r_e1"],name:"Bind the Serfs",days:55,desc:"Endure: +manpower & +defence",eff:n=>{F(n,'def');S[n].mp+=60;}},
+  {id:"r_con",col:1,tier:3,req:["r_emn"],name:"Convene the Duma",days:65,desc:"Democracy: become a Constitutional Monarchy",eff:n=>{S[n].ideoKey="constitutional";F(n,'reform');}},
+  {id:"r_reb",col:1,tier:4,req:["r_con"],name:"Rebuild the Nation",days:60,desc:"+1 manufactory, +1 Manufacturing, +90 gold",eff:n=>{S[n].civ++;S[n].tech.industry++;S[n].pp+=90;}},
+  {id:"r_p1",col:2,tier:0,name:"Tsarist Autocracy",days:45,desc:"+defence & stability",eff:n=>F(n,'def')},
+  {id:"r_p2",col:2,tier:1,req:["r_p1"],name:"The Secret Chancellery",days:55,desc:"Crush dissent: national spirit",eff:n=>F(n,'spirit')},
+  {id:"r_cruv",col:2,tier:2,req:["r_p1"],name:"Cruvian Autonomy",days:55,desc:"Grant Cruv a free state as a loyal vassal — and quiet the restless marches.",eff:n=>{liberate(8,n,true);}},
+  {id:"r_w0",col:3,tier:0,name:"Russify Cruv",days:50,desc:"Integrate conquered Cruv: +gold & recruits",eff:n=>{S[n].pp+=50;S[n].mp+=40;}},
+  {id:"r_w1",col:3,tier:1,req:["r_w0"],war:6,name:"March on Javein",days:55,desc:"Casus belli on Javein",eff:n=>A(n,6)},
+  {id:"r_w2",col:3,tier:2,req:["r_w1"],war:7,name:"Drive to the Southern Sea",days:55,desc:"Casus belli on Illyria",eff:n=>A(n,7)},
+  {id:"r_egg",col:1,tier:5,secret:true,reveal:n=>S[n].focDone.has('r_emn'),req:["r_emn"],name:"☭ The People's Revolution",days:75,desc:"The serfs rise and sweep away the old order — Rigan becomes a radical Republic of boundless manpower.",eff:n=>{S[n].ideoKey='republic';F(n,'mp');S[n].mp+=120;if(n===PLAYER)toast('☭ Revolution! The old order is overthrown.');}},
+ ],
+ // ---- JAVEIN: behind, peasants vs nobles, survive Rigan ----
+ 6:[
+  {id:"j_a1",col:0,tier:0,name:"Levy the Militia",days:35,desc:"+50 recruits",eff:n=>S[n].mp+=50},
+  {id:"j_a2",col:0,tier:1,req:["j_a1"],name:"Border Fortresses",days:55,desc:"+defence vs Rigan",eff:n=>{F(n,'def');if(H[capitals[n]])H[capitals[n]].fort=Math.min(5,H[capitals[n]].fort+1);}},
+  {id:"j_e1",col:1,tier:0,name:"Import Engineers",days:45,desc:"+40 knowledge (catch up)",eff:n=>S[n].rp+=40},
+  {id:"j_e2",col:1,tier:1,req:["j_e1"],name:"First Manufactory",days:55,desc:"+1 manufactory",eff:n=>S[n].civ++},
+  {id:"j_e3",col:1,tier:2,req:["j_e2"],name:"Modern Muskets",days:55,desc:"+1 Musketry",eff:n=>S[n].tech.musket++},
+  {id:"j_p1",col:2,tier:0,name:"The Peasant Question",days:40,desc:"The realm seethes between lord and commoner",eff:()=>{}},
+  {id:"j_nob",col:2,tier:1,req:["j_p1"],name:"Side with the Nobles",days:55,desc:"Order: +defence & stability",eff:n=>{F(n,'def');F(n,'spirit');}},
+  {id:"j_pea",col:2,tier:2,req:["j_p1"],name:"Reform for the Peasants",days:55,desc:"Liberty: +manpower & knowledge",eff:n=>{F(n,'mp');F(n,'reform');S[n].mp+=40;}},
+  {id:"j_w0",col:3,tier:0,name:"Watch the Bear",days:45,desc:"Brace for Rigan: +defence",eff:n=>F(n,'def')},
+  {id:"j_w1",col:3,tier:1,req:["j_w0"],war:3,name:"Anti-Rigan Coalition",days:55,desc:"Casus belli on Rigan; seek allies",eff:n=>{A(n,3);F(n,'spirit');}},
+ ],
+ // ---- PIRATI: become a nation, then a power ----
+ 1:[
+  {id:"p_n1",col:0,tier:0,name:"Crown a Warlord-King",days:45,desc:"End the squabbling: become an Absolute Monarchy",eff:n=>{S[n].ideoKey="absolutism";}},
+  {id:"p_n2",col:0,tier:1,req:["p_n1"],name:"Form a Government",days:50,desc:"A true state at last: +1 manufactory, +production",eff:n=>{S[n].civ++;F(n,'prod');F(n,'formed');}},
+  {id:"p_n3",col:0,tier:2,req:["p_n2"],name:"Standardise the Arms",days:50,desc:"+1 Musketry, +10% attack",eff:n=>{S[n].tech.musket++;F(n,'atk');}},
+  {id:"p_n4",col:0,tier:3,req:["p_n3"],name:"Build the Grand Dockyards",days:55,desc:"+1 arsenal; raid & sail far faster",eff:n=>{S[n].mil++;F(n,'naval');}},
+  {id:"p_e1",col:1,tier:1,req:["p_n2"],name:"Plundered Hoards",days:30,desc:"+90 gold (needs a government)",eff:n=>S[n].pp+=90},
+  {id:"p_e2",col:1,tier:2,req:["p_e1"],name:"Smugglers' Markets",days:50,desc:"+15% gold & knowledge",eff:n=>F(n,'trade')},
+  {id:"p_c1",col:2,tier:1,req:["p_n2"],name:"The Corsair Fleet",days:45,desc:"Masters of the sea: +naval, +attack",eff:n=>{F(n,'naval');F(n,'atk');}},
+  {id:"p_w0",col:3,tier:1,req:["p_n2"],name:"Independence from Carak",days:45,desc:"Casus belli on Carak",war:2,eff:n=>A(n,2)},
+  {id:"p_w1",col:3,tier:2,req:["p_w0"],war:4,name:"Sack the Ostanan Ports",days:50,desc:"Casus belli on Ostana",eff:n=>A(n,4)},
+  {id:"p_egg",col:2,tier:2,secret:true,reveal:n=>S[n].focDone.has('p_c1'),req:["p_c1"],name:"☠ Hoist the Black Flag",days:40,desc:"No flag but our own — the dread of every sea. Big attack & naval bonus.",eff:n=>{F(n,'naval');F(n,'atk');F(n,'spirit');if(n===PLAYER)toast('☠ The black flag flies — no quarter, no mercy!');}},
+ ],
+ // ---- AVEON: hermit, academies, FLIGHT ----
+ 5:[
+  {id:"v_a1",col:0,tier:0,name:"Splendid Isolation",days:40,desc:"Fortress homeland: +defence",eff:n=>F(n,'def')},
+  {id:"v_a2",col:0,tier:1,req:["v_a1"],name:"Coastal Redoubts",days:55,desc:"+defence; fortify the capital",eff:n=>{F(n,'def');if(H[capitals[n]])H[capitals[n]].fort=Math.min(5,H[capitals[n]].fort+1);}},
+  {id:"v_e1",col:1,tier:0,name:"The Grand Academy",days:40,desc:"+50 knowledge",eff:n=>S[n].rp+=50},
+  {id:"v_e2",col:1,tier:1,req:["v_e1"],name:"Halls of Science",days:55,desc:"+1 manufactory, +knowledge",eff:n=>{S[n].civ++;S[n].rp+=30;}},
+  {id:"v_e3",col:1,tier:2,req:["v_e2"],name:"The Industrial Spark",days:60,desc:"+1 Manufacturing",eff:n=>S[n].tech.industry++},
+  {id:"v_p1",col:2,tier:0,name:"Council of Scholars",days:45,desc:"+knowledge; enables reform",eff:n=>F(n,'reform')},
+  {id:"v_her",col:2,tier:1,req:["v_p1"],name:"Maintain the Hermit Way",days:55,desc:"Withdraw further: big +defence & knowledge",eff:n=>{F(n,'def');F(n,'spirit');}},
+  {id:"v_opn",col:2,tier:2,req:["v_p1"],name:"Open the Borders",days:55,desc:"Engage the world: +production & trade",eff:n=>{F(n,'trade');F(n,'prod');}},
+  {id:"v_w0",col:3,tier:0,name:"The Aeronautical Society",days:40,desc:"+40 knowledge",eff:n=>S[n].rp+=40},
+  {id:"v_w1",col:3,tier:1,req:["v_w0"],name:"The Montgolfier Balloon",days:60,desc:"Take to the skies: armies march far faster",eff:n=>F(n,'flight')},
+  {id:"v_w2",col:3,tier:2,req:["v_w1"],name:"An Aerial Corps",days:65,desc:"Observation & bombardment: +attack & speed",eff:n=>{F(n,'atk');F(n,'air');}},
+  {id:"v_egg",col:3,tier:3,secret:true,reveal:n=>S[n].focDone.has('v_w2'),req:["v_w2"],name:"✈ Powered Flight",days:90,desc:"Aveon achieves true powered flight, a century ahead of the world. Armies move with astonishing speed.",eff:n=>{F(n,'flight');F(n,'air');if(n===PLAYER)toast('✈ The age of powered flight dawns over Aveon!');}},
+ ],
+};
+// shared backbone — every nation also gets these (columns 4-6) so each tree is very large
+const COMMON_FOCUS=[
+  // col4 INDUSTRY
+  {id:"k_i1",col:4,tier:0,name:"Roads & Canals",days:40,desc:"Infrastructure: +production & +60 gold",eff:n=>{F(n,'prod');S[n].pp+=60;}},
+  {id:"k_i2",col:4,tier:1,req:["k_i1"],name:"National Bank",days:45,desc:"+140 gold",eff:n=>S[n].pp+=140},
+  {id:"k_i3",col:4,tier:2,req:["k_i2"],name:"Joint-Stock Companies",days:55,desc:"+15% gold & knowledge",eff:n=>F(n,'trade')},
+  {id:"k_i4",col:4,tier:3,req:["k_i2"],name:"Census & Taxation",days:50,desc:"+manpower & +90 gold",eff:n=>{F(n,'mp');S[n].pp+=90;}},
+  {id:"k_i5",col:4,tier:4,req:["k_i3"],name:"The Industrial Spirit",days:60,desc:"+1 Manufacturing",eff:n=>{if(S[n].tech.industry<6)S[n].tech.industry++;}},
+  {id:"k_i6",col:4,tier:5,req:["k_i5"],name:"The Factory Age",days:65,desc:"+2 manufactories",eff:n=>{S[n].civ+=2;}},
+  // col5 MILITARY
+  {id:"k_m1",col:5,tier:0,name:"Military Academy",days:40,desc:"+1 Drill (organisation)",eff:n=>S[n].tech.doctrine++},
+  {id:"k_m2",col:5,tier:1,req:["k_m1"],name:"Conscription Act",days:50,desc:"+manpower & +80 recruits",eff:n=>{F(n,'mp');S[n].mp+=80;}},
+  {id:"k_m3",col:5,tier:2,req:["k_m1"],name:"Rifled Muskets",days:55,desc:"+1 Musketry",eff:n=>{if(S[n].tech.musket<6)S[n].tech.musket++;}},
+  {id:"k_m4",col:5,tier:3,req:["k_m2"],name:"Field Hospitals",days:50,desc:"+1 Drill (organisation)",eff:n=>S[n].tech.doctrine++},
+  {id:"k_m5",col:5,tier:4,req:["k_m3"],name:"Naval Tradition",days:55,desc:"+1 Gunnery, faster fleets",eff:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;F(n,'naval');}},
+  {id:"k_m6",col:5,tier:5,req:["k_m5"],name:"The Grand Fleet",days:65,desc:"+2 arsenals",eff:n=>{S[n].mil+=2;}},
+  {id:"k_m7",col:5,tier:6,req:["k_m4"],name:"Combined-Arms Doctrine",days:60,desc:"+10% attack, +1 Drill",eff:n=>{F(n,'atk');S[n].tech.doctrine++;}},
+  // col6 SOCIETY / CAPSTONE
+  {id:"k_s1",col:6,tier:0,name:"Public Education",days:40,desc:"+60 knowledge",eff:n=>S[n].rp+=60},
+  {id:"k_s2",col:6,tier:1,req:["k_s1"],name:"National Identity",days:50,desc:"A unifying national spirit",eff:n=>F(n,'spirit')},
+  {id:"k_s3",col:6,tier:2,req:["k_s2"],name:"Patriotic Fervour",days:55,desc:"+10% attack, +manpower",eff:n=>{F(n,'atk');F(n,'mp');}},
+  {id:"k_s4",col:6,tier:3,req:["k_s2"],name:"Reform the Bureaucracy",days:55,desc:"+construction & +120 gold",eff:n=>{F(n,'prod');S[n].pp+=120;}},
+  {id:"k_s5",col:6,tier:4,req:["k_s3"],name:"Total Mobilisation",days:70,desc:"+manpower, +attack, +120 recruits",eff:n=>{F(n,'mp');F(n,'atk');S[n].mp+=120;}},
+  {id:"k_s6",col:6,tier:5,req:["k_s5","k_m6","k_i6"],secret:false,name:"★ The Modern Great Power",days:90,desc:"Capstone — a peer of the great powers: +2 manufactories, +2 arsenals, +defence, +stability.",eff:n=>{S[n].civ+=2;S[n].mil+=2;F(n,'def');F(n,'spirit');S[n].stab=Math.min(80,S[n].stab+20);if(n===PLAYER)toast('★ Your nation joins the ranks of the Great Powers!');}},
+  // col7 ARMY & EMPIRE
+  {id:"x1",col:7,tier:0,name:"The War College",days:45,desc:"+1 Drill; commission a new general",eff:n=>{S[n].tech.doctrine++;S[n].gens.push(makeGen(n));}},
+  {id:"x2",col:7,tier:1,req:["x1"],name:"Officer Corps",days:50,desc:"+10% attack; another general",eff:n=>{F(n,'atk');S[n].gens.push(makeGen(n));}},
+  {id:"x6",col:7,tier:2,req:["x2"],name:"Aeronautical Corps",days:60,desc:"Embrace the skies: +1 Gunnery, air doctrine",eff:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;F(n,'air');}},
+  {id:"x7",col:7,tier:3,req:["x6"],name:"Naval Supremacy",days:60,desc:"+1 Gunnery, +1 arsenal, masters of the sea",eff:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;S[n].mil++;F(n,'naval');}},
+  {id:"x8",col:7,tier:4,req:["x7"],name:"The Grand Review",days:65,desc:"+10% attack, +manpower, +120 recruits",eff:n=>{F(n,'atk');F(n,'mp');S[n].mp+=120;}},
+  // col8 STATECRAFT
+  {id:"x3",col:8,tier:0,name:"The Royal Mint",days:45,desc:"+120 gold, +25 political power",eff:n=>{S[n].pp+=120;S[n].infl+=25;}},
+  {id:"x4",col:8,tier:1,req:["x3"],name:"Imperial Bureaucracy",days:55,desc:"Occupied lands resist far less (more income, less unrest)",eff:n=>F(n,'occ')},
+  {id:"x5",col:8,tier:2,req:["x4"],name:"The Census Bureau",days:55,desc:"+manpower, +25 political power",eff:n=>{F(n,'mp');S[n].infl+=25;}},
+  {id:"x9",col:7,tier:5,req:["x8","x5"],name:"⚜ Hegemon of Aurca",days:100,desc:"Grand capstone — +3 manufactories, +3 arsenals, +60 power, +attack, +defence, stability.",eff:n=>{S[n].civ+=3;S[n].mil+=3;S[n].infl+=60;F(n,'atk');F(n,'def');F(n,'spirit');S[n].stab=Math.min(85,S[n].stab+25);if(n===PLAYER)toast('⚜ You are the Hegemon of Aurca — none can match your power!');}},
+];
+function treeFor(n){return (TREES[n]||[]).concat(COMMON_FOCUS);}
+
+// ===================================================== HEX / ISO
+const DIRS=[[[+1,0],[0,-1],[-1,-1],[-1,0],[-1,+1],[0,+1]],[[+1,0],[+1,-1],[0,-1],[-1,0],[0,+1],[+1,+1]]];
+function neighborsCR(c,r){const p=r&1;return DIRS[p].map(([dc,dr])=>[c+dc,r+dr]).filter(([a,b])=>a>=0&&a<COLS&&b>=0&&b<ROWS);}
+const key=(c,r)=>c+','+r;
+function pxOf(col,row){return[SIZE*SQRT3*(col+0.5*(row&1))+MARGIN,SIZE*1.5*row+MARGIN+TOPPAD];}
+function liftOf(k){return(H[k]?H[k].elev:0)*ELEV_UNIT;}
+const ISO_S=0.62;let ROT=0,GCX=0,GCY=0,ISO_OFFX=0,ISO_OFFY=0,ISO_W=900,ISO_H=520,VOFF_ISO=[];
+function rebuildVOFF(){VOFF_ISO=[];const c=Math.cos(ROT),s=Math.sin(ROT);for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const ox=SIZE*Math.cos(a),oy=SIZE*Math.sin(a);const rx=ox*c-oy*s,ry=ox*s+oy*c;VOFF_ISO.push([(rx-ry)*ISO_S,(rx+ry)*0.5*ISO_S]);}}
+function isoRaw(gx,gy){const dx=gx-GCX,dy=gy-GCY,c=Math.cos(ROT),s=Math.sin(ROT);const rx=dx*c-dy*s,ry=dx*s+dy*c;return[(rx-ry)*ISO_S,(rx+ry)*0.5*ISO_S];}
+function isoPt(gx,gy){const[x,y]=isoRaw(gx,gy);return[x+ISO_OFFX,y+ISO_OFFY];}
+function computeCenter(){let mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9;for(const k in H){const[gx,gy]=pxOf(...k.split(',').map(Number));if(gx<mnx)mnx=gx;if(gx>mxx)mxx=gx;if(gy<mny)mny=gy;if(gy>mxy)mxy=gy;}GCX=(mnx+mxx)/2;GCY=(mny+mxy)/2;}
+function computeIso(){let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;for(const k in H){const h=H[k];const[gx,gy]=pxOf(h.col,h.row);const[bx,by]=isoRaw(gx,gy);for(const v of VOFF_ISO){const x=bx+v[0],yb=by+v[1],yt=yb-(h.land?h.elev*ELEV_UNIT:0);if(x<minX)minX=x;if(x>maxX)maxX=x;if(yt<minY)minY=yt;if(yb>maxY)maxY=yb;}}const PAD=40;ISO_OFFX=PAD-minX;ISO_OFFY=PAD-minY;ISO_W=(maxX-minX)+PAD*2;ISO_H=(maxY-minY)+PAD*2;}
+function rebuildProjection(){computeCenter();rebuildVOFF();computeIso();}
+function centerRaised(k){const[c,r]=k.split(',').map(Number);const[gx,gy]=pxOf(c,r);const[x,y]=isoPt(gx,gy);return[x,y-liftOf(k)];}
+
+// ===================================================== STATE
+let H={},armies=[],capitals=[],S={},labels=[],time=0,speed=1,paused=true,selected=null,gameOver=false,PLAYER=0,started=false,TAB="overview",uid=1,smoke=[],cityHexes=[],chronicle=[];
+function chron(txt){chronicle.push({d:Math.floor(time),t:txt});if(chronicle.length>250)chronicle.shift();}
+let selectedProv=null,relTick=0;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');let DPR=1;
+const alive=n=>S[n]&&!S[n].elim;
+const ideoOf=n=>IDEO[S[n].ideoKey];
+function newNationState(n){return{elim:false,ideoKey:NATIONS[n].ideo,pp:45,rp:0,mp:60,civ:0,mil:0,
+  tech:{musket:0,gunnery:0,horse:0,industry:0,doctrine:0},research:["musket","industry"],resProg:{},
+  conQ:[],milQ:[],foc:{},focus:null,focProg:0,focDone:new Set(),
+  cb:new Set(),justify:null,war:new Set(),ally:new Set(),rel:{},gens:[],
+  overlord:null,puppets:new Set(),startProv:8,stab:55,unrest:0,support:0,supporter:0,aggression:0,
+  infl:30,cabinet:new Set(),ecoLaw:'peace',consLaw:'limited',warEffic:1,resBal:{saltpetre:0,iron:0,horses:0,timber:0},
+  leader:randLeader(),leadCD:0,electT:0,cands:null,
+  des:{custom:{land:{name:"New Model Regiment",fpw:0,arm:0,tuf:0,drl:0,mob:0},ship:{name:"Grand Frigate",gun:0,hul:0,sai:0,crw:0}},uniform:NATIONS[n].col},
+  aiT:0,aiClock:0,aiDip:0,aiFoc:0,event:0};}
+const LEAD_NAMES=["Aldous","Berta","Caspian","Dorothea","Ferran","Greta","Halden","Ingrid","Joren","Klara","Lucan","Mireille","Osric","Petra","Rosalind","Theron","Ulrika","Wendel"];
+const LEAD_TRAITS=[
+  {id:"general",nm:"The Old Soldier",d:"+12% attack",atk:.12},
+  {id:"warden",nm:"The Defender",d:"+14% defence",def:.14},
+  {id:"banker",nm:"The Financier",d:"+15% production",prod:.15},
+  {id:"savant",nm:"The Savant",d:"+20% knowledge",res:.20},
+  {id:"tribune",nm:"The Tribune",d:"+20% recruits",mp:.20},
+  {id:"builder",nm:"The Engineer",d:"+15% construction",con:.15},
+];
+function randLeader(){const t=LEAD_TRAITS[Math.floor(Math.random()*LEAD_TRAITS.length)];return{name:LEAD_NAMES[Math.floor(Math.random()*LEAD_NAMES.length)],trait:t.id};}
+function leaderTrait(n){return LEAD_TRAITS.find(t=>t.id===S[n].leader.trait)||LEAD_TRAITS[0];}
+function leaderB(n,key){const t=leaderTrait(n);return t[key]||0;}
+function isDemoc(n){return S[n].ideoKey==='republic'||S[n].ideoKey==='constitutional';}
+function electionTick(n,dt){const s=S[n];if(!isDemoc(n))return;s.electT+=dt;if(s.electT>365*5){s.electT=0;if(n===PLAYER){if(!s.cands)s.cands=[randLeader(),randLeader(),randLeader()];toast("🗳️ Election season — choose your leader in the Politics tab");}else s.leader=randLeader();}}
+function desPts(n){return 3+Object.values(S[n].tech).reduce((a,b)=>a+b,0)+(S[n].foc.spirit?2:0);}
+function desSpent(n){const c=S[n].des.custom;return c.land.fpw+c.land.arm+c.land.tuf+c.land.drl+c.land.mob+c.ship.gun+c.ship.hul+c.ship.sai+c.ship.crw;}
+function genWorld(){
+  H={};armies=[];capitals=[];labels=[];selected=null;gameOver=false;time=0;uid=1;smoke=[];
+  S={};NIDS.forEach(n=>S[n]=newNationState(n));S[8].elim=true;S[9].elim=true;
+  for(let row=0;row<ROWS;row++)for(let col=0;col<COLS;col++){const ch=MAP[row][col],land=ch!=='.';const owner=land?(LET[ch]||0):0;const elev=land?((ELEVR[ch]||1)+hash2(col,row)*0.7):0;
+    let terr='plain';if(land){if(elev>4.2)terr='mtn';else if(elev>3.2)terr='hill';else{const rr=hash2(col*5+3,row*5+7);terr=rr<0.20?'forest':rr<0.30?'marsh':'plain';}if(terr!=='mtn'&&hash2(col*13+row*2,row*13+col*2)<0.10)terr='river';
+      if(owner===0&&terr!=='mtn'&&terr!=='river'&&hash2(col*7+2,row*9+5)<0.6)terr='forest';} // forested buffer wilderness between nations
+    const res=land?(terr==='mtn'||terr==='hill'?'iron':terr==='forest'?'timber':terr==='plain'?(hash2(col+1,row+1)<0.5?'horses':'saltpetre'):'saltpetre'):null;
+    H[key(col,row)]={col,row,land,owner,core:owner,res,region:ch,cap:false,city:false,name:land?provName(col,row):'',elev,fort:0,terr,dev:land?(hash2(col*2+9,row*2+4)<0.28?1:0):0};}
+  for(const n of NIDS){const hs=Object.values(H).filter(h=>h.land&&h.owner===n);if(!hs.length)continue;
+    let sx=0,sy=0;hs.forEach(h=>{const[x,y]=pxOf(h.col,h.row);sx+=x;sy+=y;});sx/=hs.length;sy/=hs.length;
+    let best=null,bd=1e9;hs.forEach(h=>{const[x,y]=pxOf(h.col,h.row);const dd=(x-sx)**2+(y-sy)**2;if(dd<bd){bd=dd;best=h;}});
+    best.cap=true;best.city=true;best.fort=2;best.dev=3;best.name=LORE[n].cap;capitals[n]=key(best.col,best.row);
+    hs.filter(h=>h!==best).sort((x,y)=>hash2(y.col*3,y.row*5)-hash2(x.col*3,x.row*5)).slice(0,2).forEach(h=>{h.city=true;h.dev=2;});
+    S[n].civ=Math.max(2,Math.round(hs.length/5));S[n].mil=Math.max(1,Math.round(hs.length/8));S[n].mp=40+hs.length*4;
+    if(n===1){S[1].civ=1;S[1].mil=1;S[1].mp=50;} // Pirati: a warlord band, not yet a state
+    armies.push(newArmy(n,capitals[n],n===1?{line:3,horse:1}:{line:6,cannon:1}));
+    S[n].gens.push(makeGen(n));
+    labels.push({text:NATIONS[n].name,x:sx,y:sy,lift:best.elev*ELEV_UNIT,col:NATIONS[n].col});}
+  for(const[reg,nm,cl] of [['M','Mangobi','#e9c7dd'],['U','Cruv','#9fd6c0']]){const mh=Object.values(H).filter(h=>h.region===reg);if(mh.length){let sx=0,sy=0,se=0;mh.forEach(h=>{const[x,y]=pxOf(h.col,h.row);sx+=x;sy+=y;se+=h.elev;});labels.push({text:nm,x:sx/mh.length,y:sy/mh.length,lift:(se/mh.length)*ELEV_UNIT,col:cl,small:true});}}
+  // relations from lore
+  for(const a of NIDS)for(const b of NIDS){if(a===b)continue;let r=-8;if(LORE[a].rivals.includes(b))r=-45;if(LORE[a].friends.includes(b))r=40;S[a].rel[b]=r;}
+  for(const n of NIDS)S[n].startProv=Math.max(1,provs(n));
+  cityHexes=Object.keys(H).filter(k=>H[k].city);chronicle=[];
+  rebuildProjection();resize();
+}
+const GEN_NAMES=["Voss","Karth","Dane","Mira","Oren","Lux","Sabre","Korr","Vale","Rhen","Tace","Brand","Hale","Wren"];
+const GEN_TRAITS=[{id:"offensive",name:"Bold",d:"+12% attack"},{id:"defensive",name:"Steady",d:"+18% defence"},{id:"logistics",name:"Quartermaster",d:"+supply & org"},{id:"cavalry",name:"Cavalry Officer",d:"+18% cavalry"}];
+const EPITHETS={offensive:["the Bold","the Hammer","Ironfist","the Relentless"],defensive:["the Wall","the Steadfast","the Shield","the Immovable"],logistics:["the Provider","the Tireless","Quartermaster","the Careful"],cavalry:["the Swift","the Sabre","Horse-Lord","the Whirlwind"]};
+function makeGen(n){const t=GEN_TRAITS[Math.floor(Math.random()*GEN_TRAITS.length)];const ep=EPITHETS[t.id][Math.floor(Math.random()*EPITHETS[t.id].length)];const born=SYL_A[Math.floor(Math.random()*SYL_A.length)]+SYL_B[Math.floor(Math.random()*SYL_B.length)];return{id:uid++,name:GEN_NAMES[Math.floor(Math.random()*GEN_NAMES.length)],trait:t.id,lvl:1,xp:0,armyId:null,epithet:ep,born,battles:0};}
+function genPortrait(g,sz){const sd=(g.id*2654435761)>>>0;const skins=["#e8c9a8","#d8b48c","#c89a72","#a87b54"],coats=["#7d2b2b","#2b4a7d","#2b6a3a","#5a3a7d","#6a5a2b"];const skin=skins[sd%4],coat=coats[(sd>>3)%5],hat="#201d16",trim="#d8af4e";
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" style="border-radius:8px;background:#15110b;flex:0 0 auto"><circle cx="24" cy="25" r="22" fill="#1c1710"/><rect x="9" y="35" width="30" height="15" rx="6" fill="${coat}"/><rect x="22" y="35" width="4" height="14" fill="${trim}"/><circle cx="16" cy="38" r="1.3" fill="${trim}"/><circle cx="32" cy="38" r="1.3" fill="${trim}"/><circle cx="24" cy="25" r="9" fill="${skin}"/><circle cx="20.6" cy="24" r="1.1" fill="#2a2018"/><circle cx="27.4" cy="24" r="1.1" fill="#2a2018"/><rect x="21" y="29" width="6" height="1.8" rx="0.9" fill="#5a3a2a"/><path d="M9 20 Q24 9 39 20 Q31 16 24 16 Q17 16 9 20Z" fill="${hat}"/><rect x="10" y="18" width="28" height="3" rx="1.5" fill="${hat}"/><circle cx="24" cy="14" r="1.6" fill="${trim}"/></svg>`;}
+function newArmy(n,k,units){const base={};for(const u of UKEYS)base[u]=0;const a={id:uid++,nation:n,key:k,units:Object.assign(base,units),org:0,hp:0,path:[],prog:0,entrench:0,supply:1,genId:null,inCombat:false,objective:null};a.hp=maxHp(a);a.org=maxOrg(a);return a;}
+
+// derived
+function maxHp(a){let v=0;for(const k of UKEYS)v+=(a.units[k]||0)*unitStat(a.nation,k,'hp');return v;}
+function maxOrg(a){let v=0;for(const k of UKEYS)v+=(a.units[k]||0)*unitStat(a.nation,k,'org');return v*(1+0.05*S[a.nation].tech.doctrine);}
+function battalions(a){let v=0;for(const k of UKEYS)v+=(a.units[k]||0);return v;}
+function genOf(a){if(a.genId==null)return null;return S[a.nation].gens.find(g=>g.id===a.genId)||null;}
+function hpFrac(a){const m=maxHp(a);return m>0?Math.max(0,a.hp/m):0;}
+function roleCount(a,role){let v=0;for(const k of UKEYS)if(UNIT[k].role===role)v+=a.units[k]||0;return v;}
+function attackOf(a){const n=a.nation,t=S[n].tech,id=ideoOf(n);let v=0;
+  for(const k of UKEYS){const c=a.units[k]||0;if(!c)continue;const u=UNIT[k];v+=c*unitStat(n,k,'atk')*(1+0.09*(t[u.tech]||0));}
+  let foot=roleCount(a,"foot")+roleCount(a,"shock"),gun=roleCount(a,"gun"),cav=roleCount(a,"cav");
+  let ca=1;if(foot&&gun)ca+=0.15+0.04*t.doctrine;if(cav&&foot)ca+=0.10;v*=ca;
+  v*=1+id.atk+(S[n].foc.atk?0.10:0)+(S[n].foc.spirit?id.atk*0.5:0)+leaderB(n,'atk')+(hasAdv(n,'marshal')?0.10:0)+(S[n].foc.air?0.06:0);
+  v*=navalEff(a,isSea(a.key));v*=(S[n].warEffic||1);
+  const g=genOf(a);if(g){if(g.trait==="offensive")v*=1+0.12+0.03*(g.lvl-1);if(g.trait==="cavalry")v*=1+(0.18)*(cav/Math.max(1,battalions(a)));}
+  return v*hpFrac(a)*(0.4+0.6*a.supply);}
+function navalEff(a,onSea){const ships=roleCount(a,"navy"),tot=Math.max(1,battalions(a)),landU=tot-ships;return onSea?(ships*1.6+landU*0.4)/tot:(ships*0.35+landU)/tot;}
+function defenseOf(a,hex){const n=a.nation,t=S[n].tech,id=ideoOf(n);let v=0;
+  for(const k of UKEYS){const c=a.units[k]||0;if(!c)continue;const u=UNIT[k];v+=c*unitStat(n,k,'def')*(1+0.05*(t[u.tech]||0));}
+  v*=1+id.def+(S[n].foc.spirit?id.def*0.5:0)+leaderB(n,'def');
+  v*=navalEff(a, hex?!hex.land:isSea(a.key));
+  let terr=1;if(hex){terr+=(TERR[hex.terr]?TERR[hex.terr].def:0)+0.25*hex.fort+a.entrench;if(S[n].foc.def&&(hex.fort>0||(TERR[hex.terr]&&TERR[hex.terr].def>=0.4)))terr+=0.25;}
+  const g=genOf(a);if(g&&g.trait==="defensive")v*=1+0.18+0.03*(g.lvl-1);
+  return v*terr*hpFrac(a)*(0.5+0.5*a.supply);}
+function speedOf(a){let s=99;for(const k of UKEYS)if(a.units[k])s=Math.min(s,unitStat(a.nation,k,'spd'));let v=s===99?1:s;const f=S[a.nation].foc;if(f.flight)v*=1.35;if(f.air)v*=1.1;return v;}
+function frontage(hex){if(!hex||!hex.land)return 9;const t=hex.terr;return t==='mtn'?4:(t==='hill'||t==='forest')?7:(t==='marsh'||t==='river')?6:12;}
+function widthEff(bn,w){return bn<=w?1:(w+(bn-w)*0.35)/bn;}
+function encircled(a){return a.supply<0.3;}
+
+// ===================================================== PATH / SUPPLY
+const isSea=k=>!H[k].land;
+function passableFor(k,nation){const h=H[k];if(!h)return false;if(isSea(k))return true;if(h.owner===0||h.owner===nation)return true;return S[nation].war.has(h.owner);}
+function findPath(start,goal,nation){if(start===goal)return[];if(!H[goal]||!passableFor(goal,nation))return null;
+  const dist={[start]:0},prev={[start]:null},pq=[[0,start]];
+  while(pq.length){let bi=0;for(let i=1;i<pq.length;i++)if(pq[i][0]<pq[bi][0])bi=i;const[d,cur]=pq.splice(bi,1)[0];if(cur===goal)break;if(d>dist[cur])continue;const[c,r]=cur.split(',').map(Number);
+    for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(!passableFor(nk,nation))continue;const w=isSea(nk)?SEA_MULT:1;const nd=d+w;if(dist[nk]===undefined||nd<dist[nk]){dist[nk]=nd;prev[nk]=cur;pq.push([nd,nk]);}}}
+  if(prev[goal]===undefined)return null;const route=[];let p=goal;while(p&&p!==start){route.unshift(p);p=prev[p];}return route;}
+const armyAt=k=>armies.find(a=>a.key===k);
+function nearestNeutral(start,nation){const seen={[start]:1},q=[start];let g=0;while(q.length&&g<400){const cur=q.shift();g++;const[c,r]=cur.split(',').map(Number);for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(nk in seen)continue;if(!passableFor(nk,nation))continue;seen[nk]=1;if(H[nk].land&&H[nk].owner===0)return nk;q.push(nk);}}return null;}
+function supplyOf(army){const n=army.nation,start=army.key;if(H[start]&&H[start].land&&H[start].owner===n)return 1;
+  const seen={[start]:0},q=[start];while(q.length){const cur=q.shift();const d=seen[cur];if(d>14)continue;const[c,r]=cur.split(',').map(Number);
+    for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(nk in seen)continue;if(!passableFor(nk,n))continue;seen[nk]=d+1;if(H[nk].land&&H[nk].owner===n)return Math.max(0.25,Math.min(1,1-((d+1)-3)/8));q.push(nk);}}
+  return 0.25;}
+
+// ===================================================== SIM
+function provs(n){return Object.values(H).filter(h=>h.land&&h.owner===n).length;}
+function econ(n,dt){const s=S[n],id=ideoOf(n),pv=provs(n);const indMul=1+0.08*s.tech.industry,trade=s.foc.trade?1.15:1;
+  const eco=ECO_LAWS[s.ecoLaw]||ECO_LAWS.peace,cons=CONS_LAWS[s.consLaw]||CONS_LAWS.limited;
+  s.infl=Math.min(250,s.infl+(0.12+(hasAdv(n,'diplomat')?0.02:0))*dt);
+  for(const q of s.puppets)if(alive(q)){s.pp+=provs(q)*0.25*dt;s.mp+=provs(q)*0.3*dt;}
+  let cities=0,devp=0,occ=0;const prod={saltpetre:0,iron:0,horses:0,timber:0};
+  for(const k in H){const h=H[k];if(!h.land||h.owner!==n)continue;if(h.city)cities++;if(h.dev)devp+=h.dev;const occu=h.core>0&&h.core!==n;if(occu)occ++;if(h.res)prod[h.res]+=occu?0.5:1;}
+  const need={saltpetre:0,iron:0,horses:0,timber:0};for(const a of armies){if(a.nation!==n)continue;for(const u of UKEYS){const c=a.units[u];if(!c||!UNIT_RES[u])continue;for(const r in UNIT_RES[u])need[r]+=c*UNIT_RES[u][r];}}
+  let deficit=0;for(const r of RESOURCES){const net=prod[r]*3.2-need[r];s.resBal[r]=net;if(net<0)deficit+=-net;}
+  s.pp-=deficit*0.05*dt;s.warEffic=Math.max(0.72,1-deficit*0.0045);
+  const occProv=Math.max(0,pv-occ*(s.foc.occ?0.25:0.5));
+  s.pp+=(cities*0.7+devp*0.22+Math.max(0,cities-1)*0.7)*dt;s.rp+=cities*0.2*dt;s.mp+=devp*0.12*dt;
+  s.pp+=(occProv*0.45+s.civ*1.4)*(1+id.prod+(s.foc.prod?0.15:0)+leaderB(n,'prod')+(hasAdv(n,'treasurer')?0.14:0))*indMul*trade*eco.prod*(s.blockaded?0.7:1)*dt;
+  s.rp+=(1+s.civ*0.45)*(1+id.res+leaderB(n,'res')+(hasAdv(n,'philosopher')?0.18:0))*trade*dt;
+  const mpCap=pv*15*(1+(s.foc.mp?0.30:0))*cons.mp;s.mp=Math.max(0,Math.min(mpCap,s.mp+pv*0.7*(1+id.mp+(s.foc.mp?0.3:0)+leaderB(n,'mp'))*cons.mp*dt));
+  if(s.war.size)s.stab-=0.022*dt*s.war.size;else s.stab+=0.05*dt;
+  s.stab+=(eco.stab+cons.stab)*dt-occ*(s.foc.occ?0.002:0.004)*dt;s.stab=Math.max(0,Math.min(s.foc.spirit?80:64,s.stab));
+  s.aggression=Math.max(0,s.aggression-0.012*dt);
+  const slots=s.research.filter(c=>c&&s.tech[c]<TECHS[c].max),RES=4.5;
+  for(const cat of slots){if(s.rp<=0)break;const add=Math.min(RES*dt,s.rp);s.resProg[cat]=(s.resProg[cat]||0)+add;s.rp-=add;const need2=40+s.tech[cat]*28;if(s.resProg[cat]>=need2){s.tech[cat]++;s.resProg[cat]=0;if(n===PLAYER)toast(`Researched ${TECHS[cat].name} ${s.tech[cat]}`);}}
+  if(s.conQ.length){const rate=(CONSTRUCT_BASE+0.5*s.civ)*(1+0.08*s.tech.industry+id.con+(s.foc.prod?0.1:0)+leaderB(n,'con')+(hasAdv(n,'quartermaster')?0.15:0));const it=s.conQ[0],PP=2.5,want=rate*dt,got=Math.min(want,s.pp/PP);it.prog+=got;s.pp-=got*PP;if(it.prog>=it.cost){finishCon(n,it);s.conQ.shift();}}
+  if(s.milQ.length){const rate=(MILBUILD_BASE+0.6*s.mil)*eco.mil;const it=s.milQ[0];it.prog+=rate*dt;if(it.prog>=it.cost){deployUnit(n,it.type);s.milQ.shift();}}
+  // focus progress
+  if(s.focus){s.focProg+=dt;const node=treeFor(n).find(f=>f.id===s.focus);if(node&&s.focProg>=node.days){node.eff(n);s.focDone.add(node.id);if(n===PLAYER)toast(`Focus complete: ${node.name}`+(node.war?` — casus belli on ${NATIONS[node.war].name}`:''));s.focus=null;s.focProg=0;}}
+  // justify war
+  if(s.justify){s.justify.prog+=dt;if(s.justify.prog>=s.justify.need){s.cb.add(s.justify.t);if(n===PLAYER)toast(`War justified against ${NATIONS[s.justify.t].name}`);s.justify=null;}}
+}
+function finishCon(n,it){if(it.kind==="civ")S[n].civ++;else if(it.kind==="mil")S[n].mil++;else if(it.kind==="fort"&&H[it.hex]&&H[it.hex].owner===n)H[it.hex].fort=Math.min(5,H[it.hex].fort+1);if(n===PLAYER)toast(`Built ${it.kind==="fort"?"Fortress":it.kind==="civ"?"Manufactory":"Arsenal"}`);}
+function deployUnit(n,type){const cap=capitals[n];let a=armies.find(x=>x.nation===n&&x.key===cap&&battalions(x)<24);if(!a){a=newArmy(n,cap,{});armies.push(a);}a.units[type]++;a.hp=maxHp(a);a.org=Math.min(maxOrg(a),a.org+unitStat(n,type,'org'));if(n===PLAYER)toast(`${unitName(n,type)} mustered`);}
+
+function step(dt){
+  for(const n of NIDS)S[n].blockaded=false;
+  for(const a of armies){if(roleCount(a,'navy')<1||!isSea(a.key))continue;const[c,r]=a.key.split(',').map(Number);for(const[nc,nr]of neighborsCR(c,r)){const o=H[key(nc,nr)];if(o&&o.land&&o.owner&&o.owner!==a.nation&&S[a.nation].war.has(o.owner))S[o.owner].blockaded=true;}}
+  for(const n of NIDS)if(alive(n))econ(n,dt);
+  for(const a of armies){a._st=(a._st||0)+dt;if(a._st>0.8){a._st=0;a.supply=Math.min(1,supplyOf(a)+(hasAdv(a.nation,'quartermaster')?0.12:0));}}
+  // battle plan: armies persist toward their objective, re-pathing as the front shifts
+  for(const a of armies){if(a.objective){if(a.key===a.objective)a.objective=null;else if(a.path.length===0&&!a.inCombat){const p=findPath(a.key,a.objective,a.nation);if(p&&p.length)a.path=p;else a.objective=null;}}}
+  for(const a of armies){if(a.path.length===0)continue;const next=a.path[0];const occ=armyAt(next);
+    if(occ&&occ.nation!==a.nation&&S[a.nation].war.has(occ.nation))continue;
+    if(occ&&occ.nation!==a.nation&&!S[a.nation].war.has(occ.nation)){a.path=[];continue;}
+    const hasShips=roleCount(a,'navy')>0;const seaM=isSea(next)?((S[a.nation].foc.naval||hasShips)?SEA_MULT*0.5:SEA_MULT):1;let tmul=isSea(next)?seaM:(TERR[H[next].terr]?TERR[H[next].terr].mv:1);if(seasonIdx(time)===0&&!isSea(next))tmul*=1.4;const stepDays=MOVE_DAYS/speedOf(a)*tmul;a.prog+=dt/stepDays;
+    if(a.prog>=1){a.prog=0;const tgt=a.path.shift();const there=armyAt(tgt);if(there&&there.nation===a.nation){mergeArmies(there,a);a.dead=true;a.path=[];}else{a.key=tgt;a.entrench=0;if(H[tgt].land&&H[tgt].owner!==a.nation&&(H[tgt].owner===0||S[a.nation].war.has(H[tgt].owner)))capture(tgt,a.nation);}}}
+  armies=armies.filter(a=>!a.dead);
+  for(const a of armies)a.inCombat=false;
+  const engaged=[];
+  for(const a of armies){if(a.path.length===0)continue;const d=armyAt(a.path[0]);if(d&&d.nation!==a.nation&&S[a.nation].war.has(d.nation))engaged.push([a,d]);}
+  for(const[a,d]of engaged){a.inCombat=true;d.inCombat=true;const atkHex=H[a.key],dHex=H[a.path[0]];
+    const uphill=Math.max(0,(dHex?dHex.elev:0)-(atkHex?atkHex.elev:0));const atkMul=1-0.06*uphill-(isSea(a.key)?0.25:0);
+    const w=frontage(dHex),aw=widthEff(battalions(a),w),dw=widthEff(battalions(d),w); // combat width: terrain caps how many fight, rest are reserves
+    const aAtk=attackOf(a)*Math.max(0.3,atkMul)*aw,dDef=defenseOf(d,dHex)*dw,dAtk=attackOf(d)*dw,aDef=defenseOf(a,atkHex)*aw;
+    let dmgD=aAtk/(1+0.03*dDef)*COMBAT_K*dt,dmgA=dAtk/(1+0.03*aDef)*COMBAT_K*dt;
+    if(encircled(a))dmgA*=1.5;if(encircled(d))dmgD*=1.5; // cut-off armies are mauled
+    const aAir=roleCount(a,'air')+(S[a.nation].foc.air?1:0),dAir=roleCount(d,'air')+(S[d.nation].foc.air?1:0); // air superiority — close support
+    if(aAir>dAir){dmgD*=1.13;dmgA*=0.9;}else if(dAir>aAir){dmgA*=1.13;dmgD*=0.9;}
+    applyDmg(d,dmgD);applyDmg(a,dmgA);
+    if(!d._rep&&d.hp<=maxHp(d)*0.04){d._rep=1;battleReport(a.nation,d.nation,a.path[0]);}
+    if(!a._rep&&a.hp<=maxHp(a)*0.04){a._rep=1;battleReport(d.nation,a.nation,a.key);}
+    gainXp(a,dt);gainXp(d,dt);spawnSmoke(a.path[0]);}
+  for(const a of armies){if(a.hp<=maxHp(a)*0.03){a.dead=true;continue;}if(a.org<=0&&a.inCombat&&a.path.length>0){a.path=[];a.org=0;}}
+  for(const[a,d]of engaged){if(!d.dead&&d.org<=0)retreat(d);}
+  armies=armies.filter(a=>!a.dead);
+  for(const a of armies){if(!a.inCombat){a.org=Math.min(maxOrg(a),a.org+ORG_REGEN*(0.3+0.7*a.supply)*dt);if(a.path.length===0)a.entrench=Math.min(ENTRENCH_MAX,a.entrench+ENTRENCH_RATE*dt);}if(a.supply<0.5)a.hp-=maxHp(a)*0.02*(0.5-a.supply)*dt;if(seasonIdx(time)===0&&a.path.length)a.hp-=maxHp(a)*0.006*dt*(H[a.key]&&H[a.key].terr==='mtn'?2:1);
+    if(isSea(a.key)&&roleCount(a,'navy')===0&&battalions(a)>0){const[c,r]=a.key.split(',').map(Number);for(const b of armies){if(b.nation===a.nation||roleCount(b,'navy')<1||!S[a.nation].war.has(b.nation))continue;const[bc,br]=b.key.split(',').map(Number);if(Math.abs(bc-c)+Math.abs(br-r)<=3){a.hp-=maxHp(a)*0.03*dt;break;}}}
+    if(a.hp<=maxHp(a)*0.03)a.dead=true;}
+  armies=armies.filter(a=>!a.dead);
+  // capitulation: a nation surrenders only after losing most of its territory (HOI4-style), not on a single capital
+  for(const n of NIDS){if(S[n].elim)continue;if(provs(n)<=Math.max(1,Math.floor(S[n].startProv*0.30)))eliminate(n,conquerorOf(n));}
+  // unrest, rebellion & collapse: low stability sparks breakaways or province revolts
+  for(const n of NIDS){if(!alive(n))continue;const s=S[n];if(s.stab<22){s.unrest+=dt;if(s.unrest>18){s.unrest=0;let did=false;const strange=Math.random()<0.5?STRANGE[Math.floor(Math.random()*STRANGE.length)]:null;
+    if(regionOwner('M')===n&&S[9].elim)did=liberate(9,n,false,strange);
+    else if(regionOwner('U')===n&&S[8].elim)did=liberate(8,n,false,strange);
+    if(!did){const ph=Object.values(H).filter(h=>h.land&&h.owner===n&&!h.cap);if(ph.length){ph[Math.floor(Math.random()*ph.length)].owner=0;s.stab=Math.min(38,s.stab+9);if(n===PLAYER)toast('⚠ Rebellion! A province has thrown off your rule.');}}
+  }}else s.unrest=0;}
+  // covert uprisings mature over time (funded support vs overlord suppression)
+  for(const nn of [8,9]){const su=S[nn];if(!su.elim){su.support=0;continue;}if(!su.support)continue;const owner=regionOwner(nn===8?'U':'M');if(!owner){su.support=0;continue;}
+    if(su.support>=100){const sup=su.supporter,strange=Math.random()<0.4?STRANGE[Math.floor(Math.random()*STRANGE.length)]:null;if(liberate(nn,owner,false,strange)){if(sup&&alive(sup)){makeAlliance(sup,nn);S[nn].rel[sup]=60;}}S[nn].support=0;continue;}
+    su.support-=(S[owner].stab>50?0.022:0.007)*dt;if(su.support<0)su.support=0;}
+  // relations drift toward their natural level (rivalries, shared enemies, warmongering)
+  relTick+=dt;if(relTick>1.5){relTick=0;for(const a of NIDS){if(!alive(a))continue;for(const b of NIDS){if(a===b||!alive(b))continue;const cur=S[a].rel[b]||0;if(S[a].war.has(b)){S[a].rel[b]=Math.min(cur,-50);continue;}const tgt=relTarget(a,b);S[a].rel[b]=cur+(tgt-cur)*0.25;}}}
+  // smoke decay
+  for(const p of smoke){p.life-=dt;p.r+=dt*8;p.y-=dt*4;}smoke=smoke.filter(p=>p.life>0);
+  checkWin();
+}
+function spawnSmoke(k){if(smoke.length>40)return;const[x,y]=centerRaised(k);if(Math.random()<0.5)smoke.push({x:x+(Math.random()*20-10),y:y+(Math.random()*10-6),r:4+Math.random()*4,life:0.8});}
+function battleReport(win,lose,k){if(!S[win]||!S[lose])return;const place=(H[k]&&H[k].name)?H[k].name:(H[k]&&!H[k].land?'the high seas':'the frontier');chron(`⚔ Battle of ${place}: ${NATIONS[win].name} routed ${NATIONS[lose].name}.`);if(win===PLAYER)toast(`⚔ Victory at ${place} — you routed ${NATIONS[lose].name}!`);else if(lose===PLAYER)toast(`⚔ Defeat at ${place} — ${NATIONS[win].name} routed your army.`);}
+function applyDmg(a,dmg){if(a.org>0){a.org-=dmg;if(a.org<0){a.hp-=(-a.org)*HP_BLEED;a.org=0;}}else a.hp-=dmg*HP_BLEED;if(a.hp<0)a.hp=0;}
+function gainXp(a,dt){const g=genOf(a);if(g){g.xp+=dt*2;g.battles=(g.battles||0)+dt*0.4;if(g.xp>=g.lvl*30){g.xp=0;g.lvl++;if(a.nation===PLAYER){toast(`🎖 Gen. ${g.name} ${g.epithet} promoted to level ${g.lvl}`);chron(`🎖 ${NATIONS[PLAYER].name}'s Gen. ${g.name} ${g.epithet} rose to level ${g.lvl}.`);}}}}
+function mergeArmies(dst,src){for(const u of UKEYS)dst.units[u]+=src.units[u];dst.hp+=src.hp;dst.org=Math.min(maxOrg(dst),dst.org+src.org);if(src.genId!=null&&dst.genId==null)dst.genId=src.genId;}
+function retreat(a){const n=a.nation,[c,r]=a.key.split(',').map(Number);let best=null;for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(!H[nk].land)continue;if(H[nk].owner===n&&!armies.some(x=>x.key===nk&&x.nation!==n)){best=nk;break;}}if(best){a.key=best;a.org=maxOrg(a)*0.2;a.path=[];a.entrench=0;}else a.dead=true;}
+function capture(k,nation){const h=H[k];if(h.owner===nation)return;const prev=h.owner;h.owner=nation;h.fort=Math.max(0,h.fort-1);if(prev>0&&S[prev])S[prev].stab=Math.max(0,S[prev].stab-0.7);}
+function conquerorOf(n){const ck=capitals[n];if(ck&&H[ck].owner!==n&&H[ck].owner!==0)return H[ck].owner;let best=0,bv=-1;for(const e of NIDS){if(e===n||!alive(e)||!S[n].war.has(e))continue;const v=provs(e);if(v>bv){bv=v;best=e;}}return best;}
+function eliminate(n,conq){if(S[n].elim)return;S[n].elim=true;if(conq&&S[conq])S[conq].aggression+=2;for(const k in H){const h=H[k];if(h.owner===n)h.owner=conq||0;}for(const a of armies){if(a.nation===n){if(conq)a.nation=conq;else a.dead=true;}}armies=armies.filter(a=>!a.dead);freePuppet(n);for(const q of [...S[n].puppets])freePuppet(q);for(const m of NIDS){S[m].war.delete(n);S[m].ally.delete(n);S[m].cb.delete(n);S[m].puppets.delete(n);}chron(`🏴 ${NATIONS[n].name} capitulated${conq?` to ${NATIONS[conq].name}`:''}.`);if(conq&&conq===PLAYER)toast(`${NATIONS[n].name} has been conquered!`);else if(n===PLAYER)toast(`${NATIONS[n].name} has fallen.`);}
+function blocProvs(n){let p=provs(n);for(const q of S[n].puppets)if(alive(q))p+=provs(q);return p;}
+function checkWin(){if(gameOver)return;
+  const totalLand=Object.values(H).filter(h=>h.land).length;
+  for(const n of NIDS){if(alive(n)&&!S[n].overlord&&blocProvs(n)>=totalLand*0.70){gameOver=true;paused=true;showEnd(n===PLAYER,n);return;}}
+  const sov=NIDS.filter(n=>alive(n)&&!S[n].overlord);
+  if(!alive(PLAYER)){gameOver=true;paused=true;showEnd(false,sov[0]||0);return;}
+  if(sov.length<=1){gameOver=true;paused=true;showEnd(sov[0]===PLAYER,sov[0]||0);}}
+
+// ===================================================== AI
+function aiTurn(n,dt){const s=S[n];
+  if(s.infl>=55&&s.cabinet.size<3){const av=ADVISORS.find(a=>!s.cabinet.has(a.id));if(av){s.infl-=av.cost;s.cabinet.add(av.id);}}
+  if(s.war.size&&s.infl>=40&&s.ecoLaw==='peace'){s.infl-=40;s.ecoLaw='war';}
+  if(s.war.size&&s.mp<25&&s.infl>=40&&s.consLaw!=='extensive'&&s.consLaw!=='total'){s.infl-=40;s.consLaw='extensive';}
+  if(s.conQ.length<2){const pv=provs(n);if(s.civ<pv/3&&s.pp>30)s.conQ.push({kind:"civ",cost:60,prog:0});else if(s.mil<Math.max(2,pv/5))s.conQ.push({kind:"mil",cost:80,prog:0});else if(H[capitals[n]]&&H[capitals[n]].fort<4)s.conQ.push({kind:"fort",hex:capitals[n],cost:45,prog:0});}
+  if(s.milQ.length<3&&s.mp>30){const r=Math.random();let type;
+    if(n===1)type=r<0.4?"ship":r<0.62?"line":r<0.82?"gren":(unitUnlocked(n,"liner")?"liner":"horse"); // Pirati: corsair fleet
+    else{const pool=["line","gren","cannon","horse","ship"];if(unitUnlocked(n,"guard"))pool.push("guard");if(unitUnlocked(n,"liner"))pool.push("liner");if(unitUnlocked(n,"air"))pool.push("air");type=pool[Math.floor(r*pool.length)];}
+    if(s.mp>=unitStat(n,type,'mp')){s.milQ.push({type,cost:unitStat(n,type,'build'),prog:0});s.mp-=unitStat(n,type,'mp');}}
+  s.research=s.research.filter(c=>c&&s.tech[c]<TECHS[c].max);while(s.research.length<2){const o=Object.keys(TECHS).filter(c=>s.tech[c]<TECHS[c].max&&!s.research.includes(c));if(!o.length)break;s.research.push(o[Math.floor(Math.random()*o.length)]);}
+  // focus: pick available, prefer war goals on rivals
+  s.aiFoc+=dt;if(!s.focus&&s.aiFoc>2){s.aiFoc=0;const tree=treeFor(n);const avail=tree.filter(f=>!s.focDone.has(f.id)&&(!f.req||f.req.every(r=>s.focDone.has(r)))&&(!f.secret||(f.reveal&&f.reveal(n))));
+    if(avail.length){const war=avail.find(f=>f.war);s.focus=(war&&Math.random()<0.5?war:avail[Math.floor(Math.random()*avail.length)]).id;s.focProg=0;}}
+  // diplomacy: war on rival/claim if strong & bordering
+  s.aiDip+=dt;if(s.aiDip>7&&!s.overlord){s.aiDip=0;if(s.war.size===0){let target=null,tv=1e9;
+    const wants=[...LORE[n].claims,...LORE[n].rivals];if(n!==2&&alive(2))wants.push(2,2); // everyone eyes Carak
+    for(const e of wants){if(e===n||!alive(e)||s.ally.has(e)||s.puppets.has(e))continue;let str=provs(e)+armies.filter(a=>a.nation===e).reduce((x,a)=>x+battalions(a),0);if(S[e].war.size)str*=0.6;if(str<tv){tv=str;target=e;}} // distracted foes are easy prey
+    const my=provs(n)+armies.filter(a=>a.nation===n).reduce((x,a)=>x+battalions(a),0);if(target&&my>tv*0.55&&s.stab>30)declareWar(n,target,true);}
+    else{for(const e of[...s.war]){if(e!==PLAYER&&provs(e)>0&&provs(e)<=Math.max(1,S[e].startProv*0.35)&&Math.random()<0.25){makePuppet(n,e);continue;}if((provs(n)<provs(e)*0.3||s.stab<18)&&Math.random()<0.35)makePeace(n,e,true);}}
+    // anti-hegemon: gang up on whoever is winning, and on Carak
+    if(n!==2&&s.war.has(2)&&Math.random()<0.3){for(const e of NIDS)if(e!==n&&e!==2&&alive(e)&&S[e].war.has(2)&&!s.ally.has(e)){makeAlliance(n,e);break;}}}
+  if(s.war.size){let t=0,tv=1e9;for(const e of s.war)if(alive(e)){const v=provs(e);if(v<tv){tv=v;t=e;}}s.aiTarget=t;}else s.aiTarget=0; // concentrate on the weakest enemy
+  s.aiClock+=dt;if(s.aiClock>1.2){s.aiClock=0;const mine=armies.filter(a=>a.nation===n);let defended=false;
+    for(const a of mine){if(a.path.length>0||a.inCombat||a.org<maxOrg(a)*0.3)continue;
+      if(!defended&&s.war.size&&a.key===capitals[n]){defended=true;continue;} // keep a garrison at the capital
+      const[ac,ar]=a.key.split(',').map(Number);let goal=null,gd=1e9;
+      // march to the nearest enemy-held province — pushes a front forward
+      const tgt=s.aiTarget&&alive(s.aiTarget)?s.aiTarget:0;
+      if(s.war.size)for(const k in H){const hx=H[k];if(hx.land&&hx.owner&&s.war.has(hx.owner)){if(tgt&&hx.owner!==tgt)continue;const[gc,gr]=k.split(',').map(Number);let dd=((ac-gc)**2+(ar-gr)**2)*(0.85+Math.random()*0.3);if(hx.city)dd*=0.5;if(hx.cap)dd*=0.4;if(dd<gd){gd=dd;goal=k;}}}
+      if(!goal){goal=nearestNeutral(a.key,n)||(a.key!==capitals[n]?capitals[n]:null);}
+      if(goal){const p=findPath(a.key,goal,n);if(p&&p.length)a.path=p.slice(0,6);}
+      if(a.genId==null){const g=s.gens.find(g=>g.armyId==null);if(g){g.armyId=a.id;a.genId=g.id;}}}}
+}
+function borders(){return true;} // naval world — every shore is reachable by sea
+function declareWar(a,b,silent,noCall){if(S[a].war.has(b))return;S[a].war.add(b);S[b].war.add(a);S[a].ally.delete(b);S[b].ally.delete(a);S[a].rel[b]=-100;S[b].rel[a]=-100;S[a].aggression+=0.8;chron(`⚔ ${NATIONS[a].name} declared war on ${NATIONS[b].name}.`);
+  if(!noCall){for(const al of [...S[a].ally]){if(al!==b&&al!==PLAYER&&alive(al)&&!S[al].war.has(b)){declareWar(al,b,true,true);if(a===PLAYER||al===PLAYER||b===PLAYER)toast(`${NATIONS[al].name} joins ${NATIONS[a].name} against ${NATIONS[b].name}`);}}
+    for(const al of [...S[b].ally]){if(al!==a&&al!==PLAYER&&alive(al)&&!S[al].war.has(a)){declareWar(al,a,true,true);if(a===PLAYER||al===PLAYER||b===PLAYER)toast(`${NATIONS[al].name} joins ${NATIONS[b].name} against ${NATIONS[a].name}`);}}}
+  if(!silent||a===PLAYER||b===PLAYER)toast(`⚔️ ${NATIONS[a].name} declares war on ${NATIONS[b].name}`);}
+function makePeace(a,b,silent){if(!S[a].war.has(b))return;S[a].war.delete(b);S[b].war.delete(a);S[a].rel[b]=Math.max(S[a].rel[b],-20);S[b].rel[a]=S[a].rel[b];if(!silent||a===PLAYER||b===PLAYER)toast(`🕊️ ${NATIONS[a].name} & ${NATIONS[b].name} make peace`);}
+function makeAlliance(a,b){if(S[a].war.has(b))return false;S[a].ally.add(b);S[b].ally.add(a);S[a].rel[b]=60;S[b].rel[a]=60;return true;}
+function sharedEnemy(a,b){for(const e of S[a].war)if(S[b].war.has(e))return true;return false;}
+function relReasons(a,b){const r=[];if(LORE[a]&&LORE[a].rivals&&LORE[a].rivals.includes(b))r.push(['Ancient rivalry',-40]);if(LORE[a]&&LORE[a].friends&&LORE[a].friends.includes(b))r.push(['Old friendship',30]);
+  if(S[a].ideoKey===S[b].ideoKey)r.push(['Shared ideology',10]);if(sharedEnemy(a,b))r.push(['A common enemy',16]);
+  if(S[a].ally.has(b))r.push(['Alliance',24]);if(S[a].overlord===b)r.push(['Our overlord',18]);if(S[b].overlord===a)r.push(['Our vassal',12]);
+  if(S[a].war.has(b))r.push(['At war',-60]);
+  if(S[b].aggression>0.5)r.push(['Their conquests alarm us',-Math.min(45,Math.round(S[b].aggression*6))]);
+  if((S[9].supporter===a&&regionOwner('M')===b)||(S[8].supporter===a&&regionOwner('U')===b))r.push(['We meddle in their realm',-20]);
+  return r;}
+function relTarget(a,b){let v=-5;for(const x of relReasons(a,b))v+=x[1];return Math.max(-100,Math.min(100,v));}
+function makePuppet(over,sub){if(over===sub||!alive(sub)||S[sub].overlord===over)return false;
+  S[over].war.delete(sub);S[sub].war.delete(over);S[sub].overlord=over;S[over].puppets.add(sub);
+  S[over].ally.add(sub);S[sub].ally.add(over);S[over].rel[sub]=80;S[sub].rel[over]=80;S[sub].cb.delete(over);
+  if(over===PLAYER||sub===PLAYER)toast(`🏳️ ${NATIONS[sub].name} bends the knee to ${NATIONS[over].name}`);return true;}
+function freePuppet(sub){const o=S[sub].overlord;if(o!=null&&S[o])S[o].puppets.delete(sub);S[sub].overlord=null;}
+function regionOwner(reg){const c={};for(const k in H){const h=H[k];if(h.region===reg&&h.land&&h.owner)c[h.owner]=(c[h.owner]||0)+1;}let best=0,bv=0;for(const o in c)if(c[o]>bv){bv=c[o];best=+o;}return best;}
+function liberate(nn,from,asPuppet,strange){if(!S[nn].elim)return false;const reg=nn===8?'U':'M';
+  const hexes=Object.values(H).filter(h=>h.region===reg&&h.owner===from);if(hexes.length<1)return false;
+  const s=S[nn];s.elim=false;s.war=new Set();s.ally=new Set();s.puppets=new Set();s.overlord=null;s.cb=new Set();s.conQ=[];s.milQ=[];s.focDone=new Set();s.focus=null;s.focProg=0;s.foc={};
+  s.ideoKey=strange||LORE[nn].ideo;s.leader=randLeader();s.stab=55;s.civ=1;s.mil=1;s.pp=40;s.mp=hexes.length*7;
+  for(const h of hexes){h.owner=nn;h.core=nn;}
+  let sx=0,sy=0;hexes.forEach(h=>{const[x,y]=pxOf(h.col,h.row);sx+=x;sy+=y;});sx/=hexes.length;sy/=hexes.length;
+  let best=hexes[0],bd=1e9;hexes.forEach(h=>{const[x,y]=pxOf(h.col,h.row);const dd=(x-sx)**2+(y-sy)**2;if(dd<bd){bd=dd;best=h;}});
+  best.cap=true;best.fort=2;capitals[nn]=key(best.col,best.row);s.startProv=hexes.length;
+  armies.push(newArmy(nn,capitals[nn],{line:4,cannon:1}));
+  if(asPuppet){S[nn].rel[from]=80;S[from].rel[nn]=80;makePuppet(from,nn);}
+  else{S[from].war.add(nn);S[nn].war.add(from);S[nn].rel[from]=-100;S[from].rel[nn]=-60;S[from].stab=Math.max(0,S[from].stab-8);}
+  chron(`🏴 ${NATIONS[nn].name} ${asPuppet?'was granted autonomy by':'rose in revolt against'} ${NATIONS[from].name}.`);
+  toast(`🏴 <b>${NATIONS[nn].name}</b> ${asPuppet?'is granted autonomy by':'rises in revolt against'} ${NATIONS[from].name}!`);
+  return true;}
+
+// ===================================================== RENDER
+function resize(){DPR=window.devicePixelRatio||1;cv.width=ISO_W*DPR;cv.height=ISO_H*DPR;cv.style.width=ISO_W+'px';cv.style.height=ISO_H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+const natFill=o=>o===0?"#5b5345":NATIONS[o].col2;
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle="#0a1622";ctx.fillRect(0,0,cv.width,cv.height);
+  const order=Object.values(H).map(h=>{const[gx,gy]=pxOf(h.col,h.row);return[isoPt(gx,gy)[1],h];}).sort((a,b)=>a[0]-b[0]).map(o=>o[1]);
+  for(const h of order){const[gx,gy]=pxOf(h.col,h.row);const[bx,by]=isoPt(gx,gy);const base=VOFF_ISO.map(v=>[bx+v[0],by+v[1]]);
+    if(!h.land){ctx.beginPath();base.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle="#163049";ctx.fill();ctx.strokeStyle="rgba(40,80,110,.18)";ctx.lineWidth=1;ctx.stroke();continue;}
+    const lift=h.elev*ELEV_UNIT;const top=base.map(p=>[p[0],p[1]-lift]);const side=shade(natFill(h.owner),0.55);
+    for(let i=0;i<6;i++){const j=(i+1)%6;if((base[i][1]+base[j][1])/2>by+0.4){ctx.beginPath();ctx.moveTo(top[i][0],top[i][1]);ctx.lineTo(top[j][0],top[j][1]);ctx.lineTo(base[j][0],base[j][1]);ctx.lineTo(base[i][0],base[i][1]);ctx.closePath();ctx.fillStyle=side;ctx.fill();ctx.strokeStyle="rgba(0,0,0,.25)";ctx.lineWidth=1;ctx.stroke();}}
+    ctx.beginPath();top.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=shade(natFill(h.owner),1.12);ctx.fill();ctx.strokeStyle="rgba(0,0,0,.3)";ctx.lineWidth=1.1;ctx.stroke();
+    {const tg=TERR[h.terr];if(tg&&tg.gly){ctx.fillStyle=h.terr==='river'?"rgba(96,160,220,.85)":"rgba(12,10,6,.45)";ctx.font="11px Georgia,serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(tg.gly,bx,by-lift);}}
+    if(h.fort>0){ctx.strokeStyle="#d8cdb6";ctx.lineWidth=1.3;for(let f=0;f<h.fort;f++){ctx.beginPath();ctx.moveTo(bx-9+f*5,by-lift+6);ctx.lineTo(bx-6.5+f*5,by-lift+2);ctx.lineTo(bx-4+f*5,by-lift+6);ctx.stroke();}}
+    if(h.cap){drawFlag(bx,by-lift-2,h.owner);}
+    if(h.city){const cyy=by-lift;if(!h.cap){ctx.fillStyle="#f3eedd";ctx.beginPath();ctx.arc(bx,cyy,3,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#15110b";ctx.lineWidth=1;ctx.stroke();}
+      ctx.font="700 8px Georgia,serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.lineWidth=2.4;ctx.strokeStyle="rgba(8,6,3,.85)";ctx.strokeText(h.name,bx,cyy+(h.cap?7:5));ctx.fillStyle="#efe7d6";ctx.fillText(h.name,bx,cyy+(h.cap?7:5));}
+  }
+  // trade routes between each nation's cities (nearest-neighbour links)
+  for(const n of NIDS){if(!alive(n))continue;const cs=cityHexes.filter(k=>H[k].owner===n);if(cs.length<2)continue;ctx.strokeStyle="rgba(216,175,78,.30)";ctx.lineWidth=1.5;ctx.setLineDash([3,4]);for(const k of cs){const[ac,ar]=k.split(',').map(Number);let best=null,bd=1e9;for(const k2 of cs){if(k2===k)continue;const[bc,br]=k2.split(',').map(Number);const dd=(ac-bc)**2+(ar-br)**2;if(dd<bd){bd=dd;best=k2;}}if(best){const[x1,y1]=centerRaised(k),[x2,y2]=centerRaised(best);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}}ctx.setLineDash([]);}
+  for(const L of labels){const[px,py]=isoPt(L.x,L.y);const ly=py-(L.lift||0);ctx.font=(L.small?"italic 600 10px ":"700 13px ")+"Georgia,serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineWidth=3;ctx.strokeStyle="rgba(6,8,6,.85)";ctx.strokeText(L.text,px,ly);ctx.fillStyle=L.small?L.col:"#f3eedd";ctx.fillText(L.text,px,ly);}
+  // battle-plan: faint offensive arrows for all your armies with a standing objective
+  for(const a of armies){if(a.nation!==PLAYER||!a.objective||a===selected)continue;const[ax,ay]=centerRaised(a.key),[ox,oy]=centerRaised(a.objective);drawArrow(ax,ay,ox,oy,"rgba(216,175,78,.32)",2);}
+  if(selected&&!selected.dead){const[sx,sy]=centerRaised(selected.key);ctx.strokeStyle="#d8af4e";ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(sx,sy,SIZE*0.9,SIZE*0.52,0,0,Math.PI*2);ctx.stroke();
+    if(selected.path.length){ctx.strokeStyle="rgba(216,175,78,.85)";ctx.lineWidth=3;ctx.setLineDash([6,5]);ctx.beginPath();ctx.moveTo(sx,sy);for(const k of selected.path){const[x,y]=centerRaised(k);ctx.lineTo(x,y);}ctx.stroke();ctx.setLineDash([]);}
+    if(selected.objective){const[ox,oy]=centerRaised(selected.objective);drawArrow(sx,sy,ox,oy,"#d8af4e",1.5);}}
+  // smoke
+  for(const p of smoke){ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(210,205,195,${0.25*p.life})`;ctx.fill();}
+  for(const a of armies){let[x,y]=centerRaised(a.key);if(a.path.length){const[nx,ny]=centerRaised(a.path[0]);x+=(nx-x)*a.prog*0.55;y+=(ny-y)*a.prog*0.55;}
+    const col=NATIONS[a.nation].col,mine=a.nation===PLAYER,sel=(a===selected);
+    if(!a.inCombat){
+      ctx.beginPath();ctx.ellipse(x,y+7,8,3,0,0,Math.PI*2);ctx.fillStyle="rgba(0,0,0,.22)";ctx.fill();
+      ctx.beginPath();ctx.arc(x,y,sel?9:7.5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+      ctx.lineWidth=2;ctx.strokeStyle=sel?"#d8af4e":"#15110b";ctx.stroke();
+      ctx.fillStyle=S[a.nation].des.uniform;ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
+      if(mine||sel){ctx.font="bold 9px Georgia,serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineWidth=2.5;ctx.strokeStyle="rgba(8,6,3,.85)";ctx.strokeText(battalions(a),x,y-12);ctx.fillStyle="#f3eedd";ctx.fillText(battalions(a),x,y-12);}
+      if(a.genId!=null){ctx.fillStyle="#ffd24a";ctx.font="bold 9px Georgia";ctx.fillText("★",x+9,y-7);}
+      continue;
+    }
+    // in battle: full banner with org ring
+    ctx.beginPath();ctx.ellipse(x,y+12,11,4,0,0,Math.PI*2);ctx.fillStyle="rgba(0,0,0,.3)";ctx.fill();
+    ctx.fillStyle=col;ctx.strokeStyle="#ffd24a";ctx.lineWidth=3;roundRect(x-11,y-12,22,20,5);ctx.fill();ctx.stroke();
+    ctx.fillStyle=S[a.nation].des.uniform;ctx.fillRect(x-8,y-11,16,2.6);
+    const om=maxOrg(a);if(om>0){ctx.beginPath();ctx.arc(x,y-2,16,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0,a.org/om));ctx.strokeStyle="#9fe6b0";ctx.lineWidth=2;ctx.stroke();}
+    ctx.fillStyle="#15110b";ctx.font="bold 11px Georgia,serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(battalions(a),x,y-2);
+    let dom="line",mx=0;for(const k of UKEYS)if((a.units[k]||0)>mx){mx=a.units[k];dom=k;}ctx.fillStyle="#15110b";ctx.font="bold 7px Georgia,serif";ctx.fillText(UNIT[dom].ab,x,y+5.5);
+    if(a.genId!=null){ctx.fillStyle="#ffd24a";ctx.font="bold 10px Georgia";ctx.fillText("★",x+12,y-11);}
+    if(a.supply<0.5){ctx.fillStyle="#e0556b";ctx.font="bold 11px Georgia";ctx.fillText("!",x-12,y-10);}
+  }
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function drawArrow(x1,y1,x2,y2,col,w){ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=w||2.5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();const ang=Math.atan2(y2-y1,x2-x1),hl=9;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(ang-0.45),y2-hl*Math.sin(ang-0.45));ctx.lineTo(x2-hl*Math.cos(ang+0.45),y2-hl*Math.sin(ang+0.45));ctx.closePath();ctx.fill();}
+function drawFlag(x,y,owner){const col=NATIONS[owner].col,col2=NATIONS[owner].col2;ctx.strokeStyle="#2a2418";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y+4);ctx.lineTo(x,y-14);ctx.stroke();
+  ctx.fillStyle=col;ctx.fillRect(x,y-14,16,5);ctx.fillStyle=col2;ctx.fillRect(x,y-9,16,5);ctx.strokeStyle="rgba(0,0,0,.5)";ctx.strokeRect(x,y-14,16,10);}
+
+// ===================================================== UI
+function toast(m){const t=document.getElementById('toast');const d=document.createElement('div');d.className='tmsg';d.innerHTML=m;t.appendChild(d);setTimeout(()=>d.remove(),5000);if(t.children.length>5)t.firstChild.remove();}
+function fmtDate(days){const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];const total=Math.floor(days);const y=1700+Math.floor(total/365);const doy=total%365;const m=Math.min(11,Math.floor(doy/30.42));const day=Math.min(31,Math.floor(doy-m*30.42)+1);return `${day} ${months[m]} ${y}`;}
+function flagHTML(n){return `<span class="flag" style="background:linear-gradient(${NATIONS[n].col} 0 50%, ${NATIONS[n].col2} 50% 100%)"></span>`;}
+function bar(f,c){return `<div class="bar"><i style="width:${Math.max(0,Math.min(100,f*100))}%;background:${c}"></i></div>`;}
+function updateTop(){document.getElementById('date').textContent=fmtDate(time);const se=SEASONS[seasonIdx(time)];document.getElementById('season').textContent=se.i+' '+se.n;if(!PLAYER){document.getElementById('resbar').innerHTML='';return;}const s=S[PLAYER];
+  document.getElementById('brandsub').textContent=NATIONS[PLAYER].name+" · "+ideoOf(PLAYER).t;
+  document.getElementById('resbar').innerHTML=`<div class="r" title="Gold">🪙<b>${Math.floor(s.pp)}</b></div><div class="r" title="Knowledge">📜<b>${Math.floor(s.rp)}</b></div><div class="r" title="Recruits">🎖️<b>${Math.floor(s.mp)}</b></div><div class="r" title="Political Power">🏛️<b>${Math.floor(s.infl)}</b></div><div class="r" title="Manufactories">🏭<b>${s.civ}</b></div><div class="r" title="Arsenals">⚒️<b>${s.mil}</b></div>`;}
+function renderTab(){if(!PLAYER){document.getElementById('tabcontent').innerHTML='';return;}const s=S[PLAYER],c=document.getElementById('tabcontent');let h='';
+  if(TAB==="overview"){h+=`<h4 class="sec">${NATIONS[PLAYER].name} — ${ideoOf(PLAYER).t}</h4>`;
+    const stb=Math.round(S[PLAYER].stab);
+    h+=`<div class="card"><div class="kv"><span>${ideoOf(PLAYER).leader}</span><b>${S[PLAYER].leader.name} · ${leaderTrait(PLAYER).nm}</b></div><div class="kv"><span>Capital</span><b>${LORE[PLAYER].cap}</b></div><div class="kv"><span>Stability ${S[PLAYER].war.size?'<span class="small" style="color:#ff9aa7">↓ war</span>':'<span class="small" style="color:#9fe6b0">↑ at peace</span>'}</span><b style="color:${stb<25?'#ff9aa7':stb<45?'#e8c34a':'#9fe6b0'}">${stb}%${stb<25?' ⚠':''}</b></div><div class="kv"><span>Provinces</span><b>${provs(PLAYER)}</b></div><div class="kv"><span>Domination (win at 70%)</span><b>${Math.round(blocProvs(PLAYER)/Math.max(1,Object.values(H).filter(h=>h.land).length)*100)}%</b></div><div class="kv"><span>Regiments</span><b>${armies.filter(a=>a.nation===PLAYER).reduce((x,a)=>x+battalions(a),0)}</b></div><div class="kv"><span>Casus belli</span><b>${[...s.cb].map(t=>NATIONS[t].name).join(", ")||'—'}</b></div></div>`;
+    if(S[PLAYER].blockaded)h+=`<div class="small" style="color:#ff9aa7;margin-bottom:4px">⚓ Your coast is blockaded by enemy fleets — trade income cut 30%.</div>`;
+    h+=`<div class="small">${LORE[PLAYER].blurb}</div>`;
+    h+=`<h4 class="sec">Powers of Aurca</h4>`;
+    NIDS.filter(n=>alive(n)||S[n].startProv>1).sort((a,b)=>provs(b)-provs(a)).forEach(n=>{const at=s.war.has(n)?'<span class="pill" style="background:#5a1f25;color:#ff9aa7">WAR</span>':s.ally.has(n)?'<span class="pill" style="background:#1f4a2a;color:#9fe6b0">ALLY</span>':S[n].overlord===PLAYER?'<span class="pill" style="background:#3a3417;color:#d8af4e">VASSAL</span>':'';h+=`<div class="st ${n===PLAYER?'me':''} ${S[n].elim?'dead':''}">${flagHTML(n)}<span class="nm">${NATIONS[n].name}</span> ${n!==PLAYER?at:''} <span class="pv">${S[n].elim?'☠':provs(n)}</span></div>`;});}
+  else if(TAB==="war"){
+    h+=`<h4 class="sec">Strategic Resources</h4><div class="card">`;
+    RESOURCES.forEach(r=>{const bal=Math.round(s.resBal[r]||0);h+=`<div class="kv"><span>${RES_ICON[r]} ${RES_NAME[r]}</span><b style="color:${bal>=0?'#9fe6b0':'#ff9aa7'}">${bal>=0?'+':''}${bal}</b></div>`;});
+    h+=`<div class="small">${s.warEffic<0.99?`⚠ Shortages cut army effectiveness to ${Math.round(s.warEffic*100)}% — capture resource land or trim your forces.`:'Your armies are well supplied.'}</div></div>`;
+    h+=`<h4 class="sec">Construction</h4>`;
+    h+=`<button class="btn" data-act="con" data-kind="civ"><span>🏭 Manufactory</span><span class="cost">+income · 60</span></button><button class="btn" data-act="con" data-kind="mil"><span>⚒️ Arsenal</span><span class="cost">+muster · 80</span></button><button class="btn" data-act="con" data-kind="fort" ${selected&&selected.nation===PLAYER&&H[selected.key].owner===PLAYER?'':'disabled'}><span>🛡️ Fortress ${selected?'(here)':'(pick army)'}</span><span class="cost">+defence · 45</span></button>`;
+    if(s.conQ.length){const cr=Math.max(0.01,(CONSTRUCT_BASE+0.5*s.civ)*(1+0.08*s.tech.industry+ideoOf(PLAYER).con+(s.foc.prod?0.1:0)+leaderB(PLAYER,'con')));h+=`<div class="small" style="margin-top:6px">Works underway:</div>`;s.conQ.forEach(it=>{const eta=Math.ceil((it.cost-it.prog)/cr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span>${it.kind==="civ"?"Manufactory":it.kind==="mil"?"Arsenal":"Fortress"}</span><span class="small">~${eta}d</span></div>${bar(it.prog/it.cost,"#d8af4e")}</div>`;});}
+    h+=`<h4 class="sec">Muster Regiments — ${Math.floor(s.mp)} recruits</h4>`;
+    for(const t of UKEYS){const u=UNIT[t],lock=!unitUnlocked(PLAYER,t),mp=unitStat(PLAYER,t,'mp');h+=`<button class="btn" data-act="recruit" data-type="${t}" ${(!lock&&s.mp>=mp)?'':'disabled'}><span>${unitName(PLAYER,t)}${u.custom?' ✦':''}${lock?' 🔒':''}</span><span class="cost">${lock?`needs ${TECHS[u.req.tech].name} ${u.req.lvl}`:`${Math.round(mp)} rec · atk ${Math.round(unitStat(PLAYER,t,'atk'))} def ${Math.round(unitStat(PLAYER,t,'def'))}`}</span></button>`;}
+    if(s.milQ.length){const mr=Math.max(0.01,MILBUILD_BASE+0.6*s.mil);h+=`<div class="small" style="margin-top:6px">In the depots:</div>`;s.milQ.forEach(it=>{const eta=Math.ceil((it.cost-it.prog)/mr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span>${unitName(PLAYER,it.type)}</span><span class="small">~${eta}d</span></div>${bar(it.prog/it.cost,"#7fc6ff")}</div>`;});}}
+  else if(TAB==="research"){h+=`<h4 class="sec">Sciences (2 slots · ${Math.floor(s.rp)} knowledge)</h4>`;
+    for(const cat in TECHS){const T=TECHS[cat],lvl=s.tech[cat],active=s.research.includes(cat),done=lvl>=T.max,need=40+lvl*28,prog=done?1:(s.resProg[cat]||0)/need;
+      h+=`<div class="card"><div class="kv"><span><b style="color:${active?'#d8af4e':'#efe7d6'}">${T.name}</b> · ${lvl}/${T.max}</span>${done?'<span class="pill" style="background:#1f4a2a;color:#9fe6b0">MAX</span>':active?'<span class="pill" style="background:#3a3417;color:#d8af4e">STUDYING</span>':`<button class="btn" style="width:auto;padding:3px 8px;margin:0" data-act="research" data-cat="${cat}">Study</button>`}</div><div class="small">${T.desc}</div>${done?'':bar(prog,"#7fc6ff")}</div>`;}}
+  else if(TAB==="politics"){const id=ideoOf(PLAYER);h+=`<h4 class="sec">Government</h4><div class="card"><div class="kv"><span>${id.t}</span><b>${isDemoc(PLAYER)?'Elected':'Appointed'}</b></div><div class="small">atk +${Math.round(id.atk*100)}% · def +${Math.round(id.def*100)}% · prod +${Math.round(id.prod*100)}% · know +${Math.round(id.res*100)}% · recruits +${Math.round(id.mp*100)}%</div></div>`;
+    const lt=leaderTrait(PLAYER);
+    h+=`<h4 class="sec">Head of State</h4><div class="card"><div class="kv"><span>${id.leader} <b>${s.leader.name}</b></span><b style="color:#d8af4e">${lt.nm}</b></div><div class="small">${lt.d}</div>`;
+    if(s.cands){h+=`<div class="small" style="margin:7px 0 4px">${isDemoc(PLAYER)?'🗳️ Election — cast your vote:':'👑 Choose a successor:'}</div>`;s.cands.forEach((c,i)=>{const t=LEAD_TRAITS.find(x=>x.id===c.trait);h+=`<button class="btn" data-act="pickleader" data-i="${i}"><span>${c.name}</span><span class="cost">${t.nm} · ${t.d}</span></button>`;});}
+    else h+=`<div style="margin-top:7px"><button class="btn" data-act="candidates" ${s.leadCD>time?'disabled':''}><span>${isDemoc(PLAYER)?'🗳️ Hold Election':'👑 Appoint New Leader'}</span><span class="cost">${s.leadCD>time?Math.ceil((s.leadCD-time)/30)+' mo':'ready'}</span></button></div>`;
+    h+=`</div>`;
+    h+=`<h4 class="sec">Cabinet — ${Math.floor(s.infl)} political power</h4>`;
+    ADVISORS.forEach(av=>{const has=s.cabinet.has(av.id);h+=`<button class="btn" data-act="advisor" data-id="${av.id}" ${has||s.infl<av.cost?'disabled':''}><span>${av.slot}${has?' ✓':''}</span><span class="cost">${has?'in office':av.cost+' PP'}</span></button>${!has?`<div class="small" style="margin:-3px 0 6px">${av.d}</div>`:''}`;});
+    h+=`<h4 class="sec">Laws</h4><div class="card"><div class="kv"><span>Economy</span><b>${ECO_LAWS[s.ecoLaw].nm}</b></div>`;
+    Object.keys(ECO_LAWS).forEach(k=>{if(k===s.ecoLaw)return;h+=`<button class="btn" data-act="ecolaw" data-k="${k}" ${s.infl<40?'disabled':''}><span>${ECO_LAWS[k].nm}</span><span class="cost">40 PP</span></button>`;});
+    h+=`<div class="kv" style="margin-top:5px"><span>Conscription</span><b>${CONS_LAWS[s.consLaw].nm}</b></div>`;
+    Object.keys(CONS_LAWS).forEach(k=>{if(k===s.consLaw)return;h+=`<button class="btn" data-act="conslaw" data-k="${k}" ${s.infl<40?'disabled':''}><span>${CONS_LAWS[k].nm}</span><span class="cost">40 PP</span></button>`;});
+    h+=`</div>`;
+    h+=`<h4 class="sec">National Focus</h4>`;
+    if(s.focus){const node=treeFor(PLAYER).find(f=>f.id===s.focus);h+=`<div class="card"><div class="kv"><span>${node.name}</span><b>${Math.ceil(node.days-s.focProg)}d</b></div>${bar(s.focProg/node.days,"#d8af4e")}<div class="small">${node.desc}</div></div>`;}
+    else h+=`<div class="small" style="margin-bottom:8px">No focus underway.</div>`;
+    h+=`<button class="btn gold" data-act="openfocus"><span>🎯 Open Focus Tree</span><span class="cost">${s.focDone.size} done</span></button>`;
+    if(s.foc.reform){h+=`<h4 class="sec">Change ideology</h4>`;for(const k in IDEO){if(k===s.ideoKey)continue;h+=`<button class="btn" data-act="ideo" data-key="${k}"><span>${IDEO[k].t}</span></button>`;}}
+    else h+=`<div class="small">Complete <i>Reform the State</i> in your focus tree to change ideology.</div>`;}
+  else if(TAB==="diplo"){h+=`<h4 class="sec">Diplomacy</h4><div class="small" style="margin-bottom:8px">A war needs a <i>casus belli</i>. Beat a foe down and you may <b>demand vassalage</b> instead of conquering — vassals pay tribute and march at your side.</div>`;
+    for(const n of NIDS){if(n===PLAYER||S[n].elim)continue;const war=s.war.has(n),ally=s.ally.has(n),rel=Math.round(s.rel[n]||0),cb=s.cb.has(n),just=s.justify&&s.justify.t===n;
+      const myVassal=S[n].overlord===PLAYER,myLord=s.overlord===n;
+      const status=myVassal?'<span style="color:#d8af4e">Your vassal</span>':myLord?'<span style="color:#ff9aa7">Your overlord</span>':war?'<span style="color:#ff9aa7">At war</span>':ally?'<span style="color:#9fe6b0">Allied</span>':cb?'<span style="color:#d8af4e">Casus belli</span>':'Peace';
+      h+=`<div class="card"><div class="kv"><span>${flagHTML(n)} <b>${NATIONS[n].name}</b></span><b style="color:${rel>=0?'#9fe6b0':'#ff9aa7'}">${rel>0?'+':''}${rel}</b></div><div class="kv"><span>Status</span><b>${status}</b></div>`;
+      const rr=relReasons(PLAYER,n);if(rr.length)h+=`<div class="small" style="margin:1px 0 4px">${rr.map(x=>`<span style="color:${x[1]>=0?'#9fe6b0':'#ff9aa7'}">${x[0]} ${x[1]>0?'+':''}${x[1]}</span>`).join(' · ')}</div>`;
+      h+=`<div class="arow">`;
+      if(myVassal)h+=`<button class="btn" data-act="release" data-n="${n}">Release vassal</button>`;
+      else if(!myLord){
+        if(war){h+=`<button class="btn" data-act="peace" data-n="${n}">White peace</button>`;if(provs(n)<S[n].startProv*0.75)h+=`<button class="btn" data-act="reparations" data-n="${n}">Dictate peace (+gold)</button>`;if(provs(n)>0&&provs(n)<=provs(PLAYER)*0.45)h+=`<button class="btn gold" data-act="vassal" data-n="${n}">Demand vassalage</button>`;}
+        else{if(cb)h+=`<button class="btn" data-act="war" data-n="${n}">Declare war</button>`;else if(just)h+=`<div class="qitem" style="flex:1">Justifying… ${Math.ceil(s.justify.need-s.justify.prog)}d${bar(s.justify.prog/s.justify.need,"#d8af4e")}</div>`;else h+=`<button class="btn" data-act="justify" data-n="${n}" ${s.justify?'disabled':''}>Justify war</button>`;
+          if(!ally&&!cb)h+=`<button class="btn" data-act="ally" data-n="${n}" ${rel>=20?'':'disabled'}>Alliance</button>`;}}
+      h+=`</div></div>`;}
+    const mo=regionOwner('M'),uo=regionOwner('U');let mv='';
+    const movRow=(nn,reg,owner)=>{const sup=Math.round(S[nn].support||0);return `<div class="card"><div class="kv"><span>🏴 ${NATIONS[nn].name} uprising <span class="small">vs ${NATIONS[owner].name}</span></span><b style="color:#d8af4e">${sup}%</b></div>${bar(sup/100,"#d8af4e")}<button class="btn" data-act="support" data-reg="${reg}" style="margin-top:5px" ${s.pp<50?'disabled':''}>Fund the uprising (50g)</button></div>`;};
+    if(S[9].elim&&mo&&mo!==PLAYER)mv+=movRow(9,'M',mo);
+    if(S[8].elim&&uo&&uo!==PLAYER)mv+=movRow(8,'U',uo);
+    if(mv)h+=`<h4 class="sec">Independence Movements</h4><div class="small" style="margin-bottom:6px">Fund a subjugated people over time. As the uprising matures it will break free and ally with you — but a stable overlord suppresses it, and will suspect your hand.</div>`+mv;}
+  c.innerHTML=h;}
+function renderArmyPanel(){const p=document.getElementById('armyPanel');if(!selected||selected.dead||selected.nation!==PLAYER){p.classList.remove('show');return;}p.classList.add('show');const a=selected,g=genOf(a),hex=H[a.key];
+  p.innerHTML=`${g?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">${genPortrait(g,40)}<div style="font-size:12px"><b>${g.name}</b> <span style="color:#d8af4e">${g.epithet}</span><br><span class="small">${GEN_TRAITS.find(t=>t.id===g.trait).name} · Lv ${g.lvl}</span></div></div>`:`<h3>Army</h3>`}
+    <div class="comp">${UKEYS.filter(k=>a.units[k]>0).map(k=>`<div class="u"><div class="n">${a.units[k]}</div><div class="l">${UNIT[k].ab}</div></div>`).join('')||'<div class="small" style="padding:4px">— empty —</div>'}</div>
+    <div class="kv"><span>Organisation</span><b>${Math.round(a.org)}/${Math.round(maxOrg(a))}</b></div>${bar(a.org/Math.max(1,maxOrg(a)),"#7bbf6a")}
+    <div class="kv"><span>Strength</span><b>${Math.round(a.hp)}/${Math.round(maxHp(a))}</b></div>${bar(hpFrac(a),"#d6695f")}
+    <div class="kv"><span>Supply</span><b style="color:${a.supply<0.5?'#ff9aa7':'#efe7d6'}">${Math.round(a.supply*100)}%</b></div>
+    <div class="kv"><span>Attack / Defence</span><b>${Math.round(attackOf(a))} / ${Math.round(defenseOf(a,hex))}</b></div>
+    <div class="kv"><span>Frontage</span><b>${frontage(hex)} wide${battalions(a)>frontage(hex)?` · ${battalions(a)-frontage(hex)} in reserve`:''}</b></div>
+    ${encircled(a)?`<div class="small" style="color:#ff9aa7;margin:2px 0">⊘ Encircled — cut off from supply, being mauled!</div>`:''}
+    <div class="kv"><span>Ground</span><b>${hex?`elev ${hex.elev.toFixed(1)}${hex.fort?` · fort ${hex.fort}`:''}`:'—'}</b></div>
+    <div class="arow"><button class="btn" data-act="split">Split</button><button class="btn" data-act="assigngen" ${S[PLAYER].gens.some(x=>x.armyId==null)&&a.genId==null?'':'disabled'}>+General</button></div>`;}
+function renderProvPanel(){const p=document.getElementById('provPanel');if(!selectedProv||selectedProv.owner!==PLAYER||selected){p.classList.remove('show');return;}p.classList.add('show');const h=selectedProv,dc=40+h.dev*25;
+  p.innerHTML=`<h3>${h.name}${h.cap?' ✪':h.city?' ✦':''}</h3>
+    <div class="kv"><span>Terrain</span><b>${TERR[h.terr]?TERR[h.terr].nm:'Land'}</b></div>
+    <div class="kv"><span>Development</span><b>${h.dev} / 5</b></div>${bar(h.dev/5,"#d8af4e")}
+    <div class="kv"><span>Fortification</span><b>${h.fort} / 5</b></div>${bar(h.fort/5,"#7fc6ff")}
+    <div class="small">${h.city?'A city — its workshops and markets enrich the realm.':'Develop this land to raise its output.'}</div>
+    <div class="arow"><button class="btn" data-pact="dev" ${h.dev>=5||S[PLAYER].pp<dc?'disabled':''}>Develop (${dc}g)</button><button class="btn" data-pact="fort" ${h.fort>=5||S[PLAYER].pp<45?'disabled':''}>Fortify (45g)</button></div>`;}
+
+// focus tree overlay render
+function renderFocus(){if(!PLAYER)return;const s=S[PLAYER],tree=treeFor(PLAYER).filter(f=>!f.secret||(f.reveal&&f.reveal(PLAYER)));const COLW=176,ROWH=88,inner=document.getElementById('ftreeInner');
+  let maxTier=0,maxCol=0;tree.forEach(f=>{maxTier=Math.max(maxTier,f.tier);maxCol=Math.max(maxCol,f.col);});
+  inner.style.width=(maxCol+1)*COLW+40+'px';inner.style.height=(maxTier+1)*ROWH+40+'px';
+  // svg lines
+  let svg=`<svg style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none">`;
+  const pos=f=>({x:20+f.col*COLW+75,y:20+f.tier*ROWH});
+  tree.forEach(f=>{if(f.req)f.req.forEach(rq=>{const pr=tree.find(x=>x.id===rq);if(!pr)return;const a=pos(pr),b=pos(f);svg+=`<line x1="${a.x}" y1="${a.y+62}" x2="${b.x}" y2="${b.y}" stroke="${s.focDone.has(rq)?'#6a8a4a':'#4a4030'}" stroke-width="2"/>`;});});
+  svg+=`</svg>`;
+  let nodes='';
+  tree.forEach(f=>{const p=pos(f);const done=s.focDone.has(f.id),active=s.focus===f.id,avail=!done&&!active&&(!f.req||f.req.every(r=>s.focDone.has(r)))&&!s.focus,locked=!done&&!active&&!avail;
+    const cls=['fnode'];if(f.war)cls.push('war');if(f.secret)cls.push('secret');if(done)cls.push('done');if(active)cls.push('active');if(locked)cls.push('locked');
+    nodes+=`<div class="${cls.join(' ')}" style="left:${p.x-75}px;top:${p.y}px" ${avail?`data-foc="${f.id}"`:''}><div class="ft">${done?'✓':active?Math.ceil(f.days-s.focProg)+'d':f.days+'d'}</div><div class="fn">${f.name}</div><div class="fd">${f.desc}</div>${f.war?`<span class="warpill">CB: ${NATIONS[f.war].name}</span>`:''}${active?bar(s.focProg/f.days,"#d8af4e"):''}</div>`;});
+  inner.innerHTML=svg+nodes;
+  document.getElementById('ftitle').textContent=`${NATIONS[PLAYER].name} — National Focus`;
+  document.getElementById('fstatus').textContent=s.focus?`Pursuing: ${tree.find(f=>f.id===s.focus).name}`:'Select a focus to begin';}
+
+// ===================================================== DESIGN BUREAU
+function renderDesign(){if(!PLAYER)return;const s=S[PLAYER],cu=s.des.custom,rem=desPts(PLAYER)-desSpent(PLAYER);
+  const row=(grp,key,label,note,val)=>`<div class="kv"><span>${label} <span class="small">${note}</span></span><span style="white-space:nowrap"><button class="btn" style="width:auto;display:inline-block;padding:2px 9px;margin:0" data-des="-${grp}.${key}" ${val<=0?'disabled':''}>−</button> <b style="display:inline-block;min-width:16px;text-align:center">${val}</b> <button class="btn" style="width:auto;display:inline-block;padding:2px 9px;margin:0" data-des="+${grp}.${key}" ${rem<=0?'disabled':''}>+</button></span></div>`;
+  const L=cu.land,Sh=cu.ship;
+  const stats=(k)=>`atk ${Math.round(unitStat(PLAYER,k,'atk'))} · def ${Math.round(unitStat(PLAYER,k,'def'))} · hp ${Math.round(unitStat(PLAYER,k,'hp'))} · org ${Math.round(unitStat(PLAYER,k,'org'))} · spd ${unitStat(PLAYER,k,'spd').toFixed(2)} · ${Math.round(unitStat(PLAYER,k,'mp'))} rec`;
+  const colors=["#d6483f","#3f86e0","#3fae6a","#e0902b","#a05fd6","#27b8b8","#d76fae","#cfd7e2","#2a2418"];
+  let h=`<h2>🛠️ Design Bureau</h2><p>Design your own regiment and warship from the ground up — they become recruitable units (marked ✦ in the War tab). Design points come from your research. Points to spend: <b style="color:#d8af4e">${rem}</b></p>`;
+  h+=`<h4 class="sec">Custom Regiment — “${L.name}”</h4>`;
+  h+=row('land','fpw','Firepower','+2 attack',L.fpw)+row('land','arm','Armour','+3 defence',L.arm)+row('land','tuf','Toughness','+3 strength',L.tuf)+row('land','drl','Drill','+4 organisation',L.drl)+row('land','mob','Mobility','+0.15 speed',L.mob);
+  h+=`<div class="small" style="margin:3px 0 2px">${stats('cland')}</div>`;
+  h+=`<h4 class="sec">Custom Warship — “${Sh.name}”</h4>`;
+  h+=row('ship','gun','Guns','+3 attack',Sh.gun)+row('ship','hul','Hull','+3 def, +2 hp',Sh.hul)+row('ship','crw','Crew','+4 organisation',Sh.crw)+row('ship','sai','Sails','+0.2 speed',Sh.sai);
+  h+=`<div class="small" style="margin:3px 0 2px">${stats('cship')}</div>`;
+  h+=`<h4 class="sec">Regimental Uniform</h4><div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px">${colors.map(c=>`<span data-uni="${c}" style="width:28px;height:28px;border-radius:6px;background:${c};cursor:pointer;border:2px solid ${s.des.uniform===c?'#fff':'rgba(255,255,255,.15)'}"></span>`).join('')}</div>`;
+  h+=`<button class="go" data-des="close">Done</button>`;
+  document.getElementById('designBody').innerHTML=h;}
+
+// ===================================================== EVENTS (light)
+function randArmy(n){const a=armies.filter(x=>x.nation===n);return a.length?a[Math.floor(Math.random()*a.length)]:null;}
+function randProv(n){const h=Object.values(H).filter(x=>x.land&&x.owner===n);return h.length?h[Math.floor(Math.random()*h.length)]:null;}
+const EVENTS=[
+  {t:"Bountiful Harvest",d:"The granaries overflow this autumn. How shall the realm use the surplus?",c:[
+    {l:"Sell the grain abroad — fill the treasury (+80 gold)",e:n=>S[n].pp+=80},
+    {l:"Lay it up for the army (+70 recruits)",e:n=>S[n].mp+=70}]},
+  {t:"Workers' Strike",d:"The manufactories stand silent — the workers demand fairer wages.",c:[
+    {l:"Send in the dragoons (−40 recruits, +discipline)",e:n=>{S[n].mp=Math.max(0,S[n].mp-40);F(n,'def');}},
+    {l:"Grant the wage rise (−70 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-70)}]},
+  {t:"A New Element",d:"Court chemists have isolated a strange new element. Where shall its study be directed?",c:[
+    {l:"To the academies (+55 knowledge)",e:n=>S[n].rp+=55},
+    {l:"To the arsenals (+1 Gunnery)",e:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;}}]},
+  {t:"Border Incident",d:"Foreign soldiers have crossed our frontier and burned a village.",c:[
+    {l:"Demand reparations (+90 gold)",e:n=>S[n].pp+=90},
+    {l:"Answer with fortifications (+defence, +fort)",e:n=>{F(n,'def');if(H[capitals[n]])H[capitals[n]].fort=Math.min(5,H[capitals[n]].fort+1);}}]},
+  {t:"Famine in the Provinces",d:"Crops have failed and the people go hungry. The court must act.",c:[
+    {l:"Import grain at great cost (−90 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-90)},
+    {l:"Impose strict rationing (−60 recruits)",e:n=>S[n].mp=Math.max(0,S[n].mp-60)}]},
+  {t:"The Inventor's Petition",d:"A celebrated inventor offers his genius — but to one cause only.",c:[
+    {l:"Naval engineering (+naval prowess, +1 Gunnery)",e:n=>{F(n,'naval');if(S[n].tech.gunnery<6)S[n].tech.gunnery++;}},
+    {l:"Siege artillery (+1 Gunnery, +attack)",e:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;F(n,'atk');}}]},
+  {t:"Army Mutiny",d:"Unpaid regiments are on the brink of mutiny.",c:[
+    {l:"Pay the arrears in full (−70 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-70)},
+    {l:"Make examples of the ringleaders (−30 recruits, +discipline)",e:n=>{S[n].mp=Math.max(0,S[n].mp-30);F(n,'def');}}]},
+  {t:"Foreign Envoy",d:"An envoy proposes a commercial treaty between our realms.",c:[
+    {l:"Sign the trade pact (+15% gold & knowledge)",e:n=>F(n,'trade')},
+    {l:"Rebuff them and stand alone (+55 recruits)",e:n=>S[n].mp+=55}]},
+  {t:"Great Flood",d:"The rivers have burst their banks, drowning fields and forts alike.",c:[
+    {l:"Rebuild swiftly with treasury gold (−60 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-60)},
+    {l:"Conscript labour to resettle (−40 recruits)",e:n=>S[n].mp=Math.max(0,S[n].mp-40)}]},
+  {t:"The Pretender",d:"A pretender has appeared, claiming descent from the old royal line.",c:[
+    {l:"Imprison the pretender (+stability)",e:n=>F(n,'spirit')},
+    {l:"Buy his silence with gold (−80 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-80)}]},
+];
+let pendingEvent=null, eventWasPaused=false;
+function maybeEvent(n,dt){const s=S[n];s.event+=dt;if(s.event>50){s.event=0;if(Math.random()<0.55){const ev=EVENTS[Math.floor(Math.random()*EVENTS.length)];
+  if(n===PLAYER&&!pendingEvent){pendingEvent={ev,n};showEventModal();}else ev.c[Math.floor(Math.random()*ev.c.length)].e(n);}}}
+function showEventModal(){if(!pendingEvent)return;const ev=pendingEvent.ev;let h=`<h2>${ev.t}</h2><p>${ev.d}</p>`;ev.c.forEach((c,i)=>{h+=`<button class="btn" data-ev="${i}" style="text-align:center;justify-content:center;margin-bottom:8px">${c.l}</button>`;});document.getElementById('eventBody').innerHTML=h;document.getElementById('eventScreen').classList.add('show');eventWasPaused=paused;paused=true;}
+
+// ===================================================== INPUT
+function pickHex(mx,my){let best=null,bd=1e9;for(const k in H){const[cx,cy]=centerRaised(k);const dd=(cx-mx)**2+(cy-my)**2;if(dd<bd){bd=dd;best=H[k];}}return(best&&bd<=(SIZE*1.5)**2)?best:null;}
+cv.addEventListener('click',e=>{if(gameOver||!started)return;const rect=cv.getBoundingClientRect();const sx=cv.width/DPR/rect.width,sy=cv.height/DPR/rect.height;const h=pickHex((e.clientX-rect.left)*sx,(e.clientY-rect.top)*sy);if(!h)return;const k=key(h.col,h.row),here=armyAt(k);
+  if(e.shiftKey){const mine=armies.filter(a=>a.nation===PLAYER);let any=false;for(const a of mine){const p=findPath(a.key,k,PLAYER);if(p){a.path=p;a.prog=0;a.objective=k;any=true;}}if(any)toast('⚑ Offensive ordered — all armies advance');renderArmyPanel();return;}
+  if(selected&&!selected.dead){if(here&&here.nation===PLAYER&&here!==selected){selected=here;renderArmyPanel();return;}if(k===selected.key){selected.path=[];selected.objective=null;renderArmyPanel();return;}const p=findPath(selected.key,k,PLAYER);if(p){selected.path=p;selected.prog=0;selected.objective=k;}else toast("No route — you need a casus belli to enter their land");renderArmyPanel();return;}
+  if(here&&here.nation===PLAYER){selected=here;selectedProv=null;renderProvPanel();renderArmyPanel();return;}
+  if(h.land&&h.owner===PLAYER){selectedProv=h;selected=null;renderArmyPanel();renderProvPanel();return;}
+  selectedProv=null;renderProvPanel();});
+cv.addEventListener('contextmenu',e=>{e.preventDefault();if(selected){selected.path=[];selected.objective=null;selected=null;renderArmyPanel();}selectedProv=null;renderProvPanel();});
+document.getElementById('provPanel').addEventListener('click',e=>{const b=e.target.closest('[data-pact]');if(!b||!selectedProv)return;const h=selectedProv,sp=S[PLAYER];
+  if(b.dataset.pact==='dev'){const c=40+h.dev*25;if(h.dev<5&&sp.pp>=c){sp.pp-=c;h.dev++;toast(`${h.name} developed to level ${h.dev}`);}}
+  else if(b.dataset.pact==='fort'){if(h.fort<5&&sp.pp>=45){sp.pp-=45;h.fort++;toast(`${h.name} fortified to ${h.fort}`);}}
+  renderProvPanel();updateTop();});
+cv.addEventListener('mousemove',e=>{if(!started){return;}const rect=cv.getBoundingClientRect();const sx=cv.width/DPR/rect.width,sy=cv.height/DPR/rect.height;const h=pickHex((e.clientX-rect.left)*sx,(e.clientY-rect.top)*sy);const info=document.getElementById('hexInfo');if(!h){info.style.display='none';return;}
+  const owner=h.owner?NATIONS[h.owner].name:(h.land?'Unclaimed':'Sea');const terr=h.land?(TERR[h.terr]?TERR[h.terr].nm:'Land'):'Open Sea';const reg=h.region==='M'?' · Mangobi':h.region==='U'?' · Cruv':'';const here=armyAt(key(h.col,h.row));
+  info.innerHTML=`${h.land?`<b>${h.name}${h.cap?' ✪':h.city?' ✦':''}</b><br>`:''}<span style="color:${h.owner?NATIONS[h.owner].col:'#a99a7e'}">${owner}</span>${h.land?`<br><span style="color:#a99a7e">${terr} · dev ${h.dev}${h.fort?' · fort '+h.fort:''}${h.res?' · '+RES_ICON[h.res]+RES_NAME[h.res]:''}${h.city?(h.cap?' · capital':' · city'):''}${reg}${h.owner&&h.core>0&&h.core!==h.owner?' · <span style="color:#ff9aa7">⚑ occupied</span>':''}</span>`:''}${here?`<br><span style="color:${NATIONS[here.nation].col}">⚔ ${battalions(here)} regiments</span>`:''}`;
+  info.style.display='block';info.style.left=(e.clientX-rect.left+14)+'px';info.style.top=(e.clientY-rect.top+12)+'px';});
+cv.addEventListener('mouseleave',()=>{document.getElementById('hexInfo').style.display='none';});
+document.getElementById('tabcontent').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||!PLAYER)return;const act=b.dataset.act,s=S[PLAYER];
+  if(act==="con"){const kind=b.dataset.kind,cost=kind==="civ"?60:kind==="mil"?80:45;if(s.pp<10)return toast("Treasury too low");s.conQ.push(kind==="fort"?{kind,hex:selected.key,cost,prog:0}:{kind,cost,prog:0});}
+  else if(act==="recruit"){const t=b.dataset.type;if(!unitUnlocked(PLAYER,t)||s.mp<unitStat(PLAYER,t,'mp'))return;s.mp-=unitStat(PLAYER,t,'mp');s.milQ.push({type:t,cost:unitStat(PLAYER,t,'build'),prog:0});}
+  else if(act==="research"){const cat=b.dataset.cat;if(s.research.includes(cat))return;s.research=s.research.filter(x=>x);if(s.research.length>=2)s.research.shift();s.research.push(cat);}
+  else if(act==="ideo"){s.ideoKey=b.dataset.key;toast("The government is reconstituted");}
+  else if(act==="openfocus"){openFocus();}
+  else if(act==="war")declareWar(PLAYER,+b.dataset.n);
+  else if(act==="peace")makePeace(PLAYER,+b.dataset.n);
+  else if(act==="ally"){if(makeAlliance(PLAYER,+b.dataset.n))toast("Alliance sealed");}
+  else if(act==="justify"){if(!s.justify)s.justify={t:+b.dataset.n,prog:0,need:25};}
+  else if(act==="vassal"){makePuppet(PLAYER,+b.dataset.n);}
+  else if(act==="reparations"){const t=+b.dataset.n;makePeace(PLAYER,t);S[PLAYER].pp+=100+provs(t)*5;toast(`Dictated peace — ${NATIONS[t].name} pays reparations`);}
+  else if(act==="support"){const reg=b.dataset.reg,owner=regionOwner(reg),nn=reg==='M'?9:8;const cost=hasAdv(PLAYER,'spymaster')?40:50,gain=hasAdv(PLAYER,'spymaster')?30:22;if(owner&&owner!==PLAYER&&s.pp>=cost&&S[nn].elim){s.pp-=cost;S[nn].support=Math.min(100,(S[nn].support||0)+gain);S[nn].supporter=PLAYER;S[owner].rel[PLAYER]=(S[owner].rel[PLAYER]||0)-12;S[owner].stab=Math.max(0,S[owner].stab-3);toast(`You fund the ${NATIONS[nn].name} uprising — now ${Math.round(S[nn].support)}%`);}}
+  else if(act==="release"){const t=+b.dataset.n;freePuppet(t);s.ally.delete(t);S[t].ally.delete(PLAYER);toast("Vassal released to independence");}
+  else if(act==="advisor"){const av=ADVISORS.find(x=>x.id===b.dataset.id);if(av&&!s.cabinet.has(av.id)&&s.infl>=av.cost){s.infl-=av.cost;s.cabinet.add(av.id);toast(`Appointed ${av.slot}`);}}
+  else if(act==="ecolaw"){if(s.infl>=40){s.infl-=40;s.ecoLaw=b.dataset.k;toast(`Decree: ${ECO_LAWS[s.ecoLaw].nm}`);}}
+  else if(act==="conslaw"){if(s.infl>=40){s.infl-=40;s.consLaw=b.dataset.k;toast(`Decree: ${CONS_LAWS[s.consLaw].nm}`);}}
+  else if(act==="candidates"){if(s.leadCD<=time&&!s.cands)s.cands=[randLeader(),randLeader(),randLeader()];}
+  else if(act==="pickleader"){if(s.cands){s.leader=s.cands[+b.dataset.i];s.cands=null;s.leadCD=time+(isDemoc(PLAYER)?365*4:365*3);toast(`${ideoOf(PLAYER).leader} ${s.leader.name} now leads ${NATIONS[PLAYER].name}`);}}
+  renderTab();renderArmyPanel();updateTop();});
+document.getElementById('armyPanel').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||!selected)return;const a=selected;
+  if(b.dataset.act==="split"){if(battalions(a)<2)return toast("Too few to divide");const half={};for(const u of UKEYS)half[u]=Math.floor(a.units[u]/2);const nb=newArmy(a.nation,a.key,half);for(const u of UKEYS)a.units[u]-=half[u];nb.hp=maxHp(nb);nb.org=maxOrg(nb)*(a.org/Math.max(1,maxOrg(a)));a.hp=maxHp(a)*hpFrac(a);armies.push(nb);toast("Force divided");}
+  else if(b.dataset.act==="assigngen"){const g=S[a.nation].gens.find(x=>x.armyId==null);if(g){g.armyId=a.id;a.genId=g.id;toast(`Gen. ${g.name} takes command`);}}
+  renderArmyPanel();});
+document.getElementById('ftreeInner').addEventListener('click',e=>{const b=e.target.closest('[data-foc]');if(!b||!PLAYER)return;const s=S[PLAYER];if(s.focus)return;s.focus=b.dataset.foc;s.focProg=0;renderFocus();renderTab();});
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{TAB=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));renderTab();}));
+document.getElementById('pause').addEventListener('click',()=>{paused=!paused;document.getElementById('pause').textContent=paused?'▶':'❚❚';});
+document.querySelectorAll('.sp button[data-spd]').forEach(b=>b.addEventListener('click',()=>{speed=+b.dataset.spd;document.querySelectorAll('.sp button[data-spd]').forEach(x=>x.classList.toggle('on',x===b));paused=false;document.getElementById('pause').textContent='❚❚';}));
+function rotate(d){ROT=(ROT+d)%(Math.PI*2);rebuildProjection();resize();}
+document.getElementById('rotL').addEventListener('click',()=>rotate(-Math.PI/3));
+document.getElementById('rotR').addEventListener('click',()=>rotate(Math.PI/3));
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='q'||e.key==='ArrowLeft')rotate(-Math.PI/3);if(k==='e'||e.key==='ArrowRight')rotate(Math.PI/3);if(k===' '){e.preventDefault();paused=!paused;document.getElementById('pause').textContent=paused?'▶':'❚❚';}
+  if(k==='a'&&PLAYER&&started){const mine=armies.filter(a=>a.nation===PLAYER);if(mine.length){const idx=mine.indexOf(selected);selected=mine[(idx+1)%mine.length];renderArmyPanel();}}});
+function openFocus(){if(!PLAYER)return;renderFocus();document.getElementById('focusScreen').classList.add('show');}
+document.getElementById('focusBtn').addEventListener('click',openFocus);
+document.getElementById('fclose').addEventListener('click',()=>document.getElementById('focusScreen').classList.remove('show'));
+document.getElementById('worldBtn').addEventListener('click',openCodex);
+function openAnnals(){let h=`<h2>📖 Annals of Aurca</h2>`;if(!chronicle.length)h+=`<p>No great events have yet come to pass.</p>`;else{h+='<div style="text-align:left;font-size:13px;line-height:1.7;max-height:55vh;overflow-y:auto">';chronicle.slice().reverse().forEach(e=>{h+=`<div style="margin:2px 0"><span style="color:#a99a7e">${fmtDate(e.d)}</span> — ${e.t}</div>`;});h+='</div>';}h+=`<button class="go" id="annClose">Close</button>`;document.getElementById('annalsBody').innerHTML=h;document.getElementById('annals').classList.add('show');document.getElementById('annClose').addEventListener('click',()=>document.getElementById('annals').classList.remove('show'));}
+document.getElementById('annalsBtn').addEventListener('click',openAnnals);
+document.getElementById('annals').addEventListener('click',e=>{if(e.target.id==='annals')e.currentTarget.classList.remove('show');});
+function renderFeed(){const f=document.getElementById('feed');if(!started||!chronicle.length){f.innerHTML='';return;}f.innerHTML=chronicle.slice(-4).reverse().map(e=>`<div class="fi">${fmtDate(e.d)} · ${(e.t||'').replace(/<[^>]+>/g,'')}</div>`).join('');}
+document.getElementById('feed').addEventListener('click',openAnnals);
+function renderGenerals(){if(!PLAYER)return;const gs=S[PLAYER].gens;let h=`<h2>🎖 Marshals of ${NATIONS[PLAYER].name}</h2>`;if(!gs.length)h+='<p>You command no generals yet — assign one to an army from the army panel.</p>';
+  gs.forEach(g=>{const tr=GEN_TRAITS.find(t=>t.id===g.trait);const army=g.armyId!=null?armies.find(a=>a.id===g.armyId&&!a.dead):null;h+=`<div class="card" style="display:flex;gap:11px;text-align:left;align-items:center">${genPortrait(g,54)}<div style="flex:1"><div style="font-weight:700;font-size:14px">${g.name} <span style="color:#d8af4e">${g.epithet}</span></div><div class="small">${tr.name} — ${tr.d} · Level ${g.lvl}</div><div class="small">Born in ${g.born} · ${Math.round(g.battles||0)} battles fought</div><div class="small" style="margin-top:2px">${army?`<span style="color:#9fe6b0">⚔ Commands ${battalions(army)} regiments</span>`:'<span style="color:#a99a7e">In reserve</span>'}</div></div></div>`;});
+  h+=`<button class="go" id="genClose">Close</button>`;document.getElementById('generalsBody').innerHTML=h;document.getElementById('generals').classList.add('show');document.getElementById('genClose').addEventListener('click',()=>document.getElementById('generals').classList.remove('show'));}
+document.getElementById('genBtn').addEventListener('click',renderGenerals);
+document.getElementById('generals').addEventListener('click',e=>{if(e.target.id==='generals')e.currentTarget.classList.remove('show');});
+function openDesign(){if(!PLAYER)return;renderDesign();document.getElementById('designScreen').classList.add('show');}
+document.getElementById('designBtn').addEventListener('click',openDesign);
+document.getElementById('eventBody').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b||!pendingEvent)return;const ch=pendingEvent.ev.c[+b.dataset.ev];ch.e(pendingEvent.n);chron(`📜 ${pendingEvent.ev.t}: ${NATIONS[pendingEvent.n].name} chose "${ch.l}"`);pendingEvent=null;document.getElementById('eventScreen').classList.remove('show');paused=eventWasPaused;document.getElementById('pause').textContent=paused?'▶':'❚❚';renderTab();updateTop();});
+document.getElementById('designScreen').addEventListener('click',e=>{if(e.target.id==='designScreen')e.currentTarget.classList.remove('show');});
+document.getElementById('designBody').addEventListener('click',e=>{const b=e.target.closest('[data-des],[data-uni]');if(!b||!PLAYER)return;const s=S[PLAYER];
+  if(b.dataset.uni){s.des.uniform=b.dataset.uni;renderDesign();return;}
+  const cmd=b.dataset.des;if(cmd==="close"){document.getElementById('designScreen').classList.remove('show');return;}
+  const sign=cmd[0],p=cmd.slice(1).split('.'),obj=s.des.custom[p[0]],key=p[1],rem=desPts(PLAYER)-desSpent(PLAYER);
+  if(sign==="+"){if(rem>0)obj[key]++;}else if(obj[key]>0)obj[key]--;
+  renderDesign();});
+function saveGame(){if(!PLAYER||!started){toast('No campaign to save');return;}try{const snap={v:2,time,PLAYER,rot:ROT,speed,chronicle,hex:{},S:{},armies:armies.map(a=>Object.assign({},a)),capitals};
+  for(const k in H){const h=H[k];snap.hex[k]={o:h.owner,c:h.core,f:h.fort,d:h.dev};}
+  for(const n of NIDS){const s=S[n];snap.S[n]=Object.assign({},s,{war:[...s.war],ally:[...s.ally],puppets:[...s.puppets],cb:[...s.cb],cabinet:[...s.cabinet],focDone:[...s.focDone]});}
+  localStorage.setItem('batalon_save',JSON.stringify(snap));toast('💾 Campaign saved');}catch(e){toast('Save failed — '+e.message);}}
+function loadGame(){try{const raw=localStorage.getItem('batalon_save');if(!raw){toast('No saved campaign found');return;}const snap=JSON.parse(raw);
+  genWorld();
+  for(const k in snap.hex){if(H[k]){const o=snap.hex[k];H[k].owner=o.o;H[k].core=o.c;H[k].fort=o.f;H[k].dev=o.d;}}
+  for(const n of NIDS){const sn=snap.S[n];if(!sn)continue;const s=S[n];Object.assign(s,sn);s.war=new Set(sn.war);s.ally=new Set(sn.ally);s.puppets=new Set(sn.puppets);s.cb=new Set(sn.cb);s.cabinet=new Set(sn.cabinet);s.focDone=new Set(sn.focDone);}
+  armies=snap.armies.map(a=>Object.assign({},a));capitals=snap.capitals;time=snap.time;PLAYER=snap.PLAYER;ROT=snap.rot||0;speed=snap.speed||1;chronicle=snap.chronicle||[];
+  started=true;gameOver=false;paused=true;selected=null;selectedProv=null;
+  rebuildProjection();resize();
+  document.getElementById('pickScreen').classList.remove('show');document.getElementById('overlay').classList.remove('show');document.getElementById('pause').textContent='▶';
+  renderTab();renderArmyPanel();updateTop();toast('📂 Campaign loaded — paused');}catch(e){toast('Load failed — '+e.message);}}
+document.getElementById('saveBtn').addEventListener('click',saveGame);
+document.getElementById('loadBtn').addEventListener('click',loadGame);
+document.getElementById('tNew').addEventListener('click',()=>{document.getElementById('titleScreen').classList.remove('show');openPicker();});
+document.getElementById('tCont').addEventListener('click',()=>{if(localStorage.getItem('batalon_save')){document.getElementById('titleScreen').classList.remove('show');loadGame();}else toast('No saved campaign found');});
+let tutStep=0;const TUT=[
+  {t:"Welcome to Rise of Empires",b:"You lead one of seven powers in the world of Aurca. Run your realm from the tabs on the right and conquer the continent. Here are the basics."},
+  {t:"① Your National Focus",b:"Open the 🎯 Focus Tree (top bar). It's your national agenda — pick a focus to start; each grants powerful bonuses over time and unlocks war goals."},
+  {t:"② Economy &amp; Army",b:"In the WAR tab, build a Manufactory (gold) and an Arsenal, then muster regiments. Mix Infantry, Artillery and Cavalry for a combined-arms bonus."},
+  {t:"③ Commanding Armies",b:"Click an army token, then click a province to march there. <b>Shift-click</b> sends EVERY army at once. Press <b>A</b> to cycle your armies."},
+  {t:"④ Going to War",b:"You need a <b>casus belli</b> to invade — earn one from your focus tree or justify a war in the DIPLO tab. A nation only falls after losing most of its land."},
+  {t:"⑤ Victory",b:"Hold <b>70% of the map</b> (the NATION tab tracks it) or be the last power standing. Watch your stability, keep armies supplied, and 💾 save often. Good luck!"},
+];
+function showTutorial(){tutStep=0;paused=true;document.getElementById('pause').textContent='▶';renderTut();document.getElementById('tutorial').classList.add('show');}
+function renderTut(){const s=TUT[tutStep];document.getElementById('tutBody').innerHTML=`<div style="color:var(--gold);font-size:11px;letter-spacing:.12em">STEP ${tutStep+1} / ${TUT.length}</div><h2 style="margin:6px 0 4px">${s.t}</h2><p>${s.b}</p><div style="display:flex;gap:8px"><button class="go" id="tutSkip" style="flex:1;background:#241d12;color:var(--text);border:1px solid var(--edge)">Skip</button><button class="go" id="tutNext" style="flex:1">${tutStep<TUT.length-1?'Next ▸':'Begin!'}</button></div><div class="small" style="margin-top:8px;cursor:pointer;text-decoration:underline" id="tutNever">Don't show this again</div>`;
+  document.getElementById('tutNext').onclick=()=>{if(tutStep<TUT.length-1){tutStep++;renderTut();}else endTut();};
+  document.getElementById('tutSkip').onclick=endTut;
+  document.getElementById('tutNever').onclick=()=>{try{localStorage.setItem('batalon_tut','1');}catch(e){}endTut();};}
+function endTut(){document.getElementById('tutorial').classList.remove('show');paused=false;document.getElementById('pause').textContent='❚❚';}
+function openHowto(){const h=`<h2>❓ How to Play</h2>
+  <div style="text-align:left;font-size:13px;line-height:1.55">
+  <p style="margin:4px 0 10px;color:var(--muted)">Lead one of seven powers across the continent of Aurca. <b style="color:var(--text)">Win by holding 70% of the map</b> (Domination) or being the last great power standing.</p>
+  <h4 class="sec">The loop</h4>
+  Time flows in real time — use <b>⏸ / 1× 2× 3× 5×</b> (or Space) to control it. Each year: grow your <b>economy</b>, advance a <b>national focus</b> 🎯, research <b>tech</b>, appoint your <b>cabinet</b>, earn a <b>casus belli</b>, then go to war.
+  <h4 class="sec">Controls</h4>
+  • <b>Click an army</b> (the round token) then <b>click a province</b> to march there — it keeps advancing to that objective.<br>
+  • <b>Shift-click</b> a province = send <b>every</b> army there (mass offensive).<br>
+  • <b>Right-click</b> = cancel orders / deselect. <b>A</b> = cycle your armies.<br>
+  • <b>Click your own province</b> = open it to <b>develop</b> or <b>fortify</b> it.<br>
+  • <b>Hover</b> any province for its name, terrain, resource and owner. <b>Q/E</b> or arrow keys rotate the map. <b>💾 / 📂</b> save & load.
+  <h4 class="sec">The panels (right side)</h4>
+  <b>NATION</b> overview & standings · <b>WAR</b> build factories, recruit troops, see resources · <b>TECH</b> research · <b>POLITICS</b> cabinet, laws, leader & focus · <b>DIPLO</b> war, peace, alliances, vassalage & funding rebellions.<br>
+  Top bar: 🎯 focus tree · 🛠️ design your own units · 🎖 your generals · 📖 the chronicle · 📜 the world.
+  <h4 class="sec">War</h4>
+  You need a <b>casus belli</b> to invade (earn one from your focus tree or "Justify war" in Diplomacy). A nation only <b>capitulates after losing ~70% of its land</b> — so conquer territory, don't just grab the capital. Terrain limits how many regiments fight at once (don't overstack mountains), keep armies <b>in supply</b>, and <b>escort sea crossings with warships</b> or enemy fleets will maul them. The side with more <b>Aeronaut Corps</b> wins air superiority.
+  <h4 class="sec">Tips</h4>
+  Combined arms (infantry + artillery + cavalry) fight best · capture enemy <b>cities</b> to wreck their economy · occupied land resists and drains stability · keep your stability up or provinces revolt.
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px"><button class="go" id="howTut" style="flex:1;background:#241d12;color:var(--text);border:1px solid var(--edge)">▶ Tutorial</button><button class="go" id="howWorld" style="flex:1;background:#241d12;color:var(--text);border:1px solid var(--edge)">📜 World</button><button class="go" id="howClose" style="flex:1">Got it</button></div>`;
+  document.getElementById('howtoBody').innerHTML=h;document.getElementById('howto').classList.add('show');
+  document.getElementById('howClose').addEventListener('click',()=>document.getElementById('howto').classList.remove('show'));
+  document.getElementById('howWorld').addEventListener('click',()=>{document.getElementById('howto').classList.remove('show');openCodex();});
+  document.getElementById('howTut').addEventListener('click',()=>{document.getElementById('howto').classList.remove('show');if(started)showTutorial();else toast('Start a campaign first');});}
+document.getElementById('howtoBtn').addEventListener('click',openHowto);
+document.getElementById('howto').addEventListener('click',e=>{if(e.target.id==='howto')e.currentTarget.classList.remove('show');});
+document.getElementById('tHelp').addEventListener('click',openHowto);
+document.getElementById('restart').addEventListener('click',openPicker);
+document.getElementById('ovBtn').addEventListener('click',openPicker);
+document.getElementById('codex').addEventListener('click',e=>{if(e.target.id==='codex')e.currentTarget.classList.remove('show');});
+
+// ===================================================== PICKER / CODEX / END
+function buildPicks(){const w=document.getElementById('picks');w.innerHTML='';PLAYABLE.forEach(n=>{const id=IDEO[NATIONS[n].ideo];const d=document.createElement('div');d.className='pick';
+  d.innerHTML=`<div class="ph">${flagHTML(n)} ${NATIONS[n].name}</div><div class="pd"><b>${id.t}</b> · ${id.leader}<br>${LORE[n].blurb.slice(0,120)}…</div>`;
+  d.addEventListener('click',()=>{PLAYER=n;started=true;paused=false;document.getElementById('pickScreen').classList.remove('show');document.getElementById('pause').textContent='❚❚';renderTab();renderArmyPanel();updateTop();let tut=false;try{tut=!localStorage.getItem('batalon_tut');}catch(e){tut=true;}if(tut)showTutorial();});
+  w.appendChild(d);});}
+function openPicker(){genWorld();PLAYER=0;started=false;paused=true;gameOver=false;selected=null;TAB="overview";document.querySelectorAll('.tabs button').forEach((x,i)=>x.classList.toggle('on',i===0));document.getElementById('overlay').classList.remove('show');document.getElementById('focusScreen').classList.remove('show');document.getElementById('pickScreen').classList.add('show');document.getElementById('armyPanel').classList.remove('show');renderTab();updateTop();}
+function openCodex(){let h=`<h2>The World of Aurca · 1700</h2><p>Once the <b>Osto-Carakian Empire</b> ruled half the world — until it shattered into three quarrelling heirs: <b>Carak</b>, <b>Ostana</b> and <b>Illyria</b>. Across a wide sea, the <b>Tsardom of Rigan</b> — the old Kingdom of Rieglen, swollen by its conquest of Cruv — broods on its endless frontier, sharing a border with one land alone: feudal <b>Javein</b>. The corsairs of <b>Pirati</b>, mutineers who fled Carak, are not yet a nation at all. And far out on the western shelf, hermit <b>Aveon</b> dreams of flight. No two realms but Javein and Rigan touch by land; every other war must cross the waves. Bayonet and cannon have replaced pike and bow — and the great question of the age is who shall master the rest.</p>`;
+  NIDS.forEach(n=>{const claims=LORE[n].claims.map(t=>NATIONS[t].name).join(', '),riv=LORE[n].rivals.map(t=>NATIONS[t].name).join(', '),fr=LORE[n].friends.map(t=>NATIONS[t].name).join(', ');
+    h+=`<div class="card"><div class="kv"><span>${flagHTML(n)} <b style="color:${NATIONS[n].col}">${NATIONS[n].name}</b> — ${IDEO[NATIONS[n].ideo].t}</span></div><div class="small">${LORE[n].blurb}</div><div class="small" style="margin-top:5px">Capital: ${LORE[n].cap}${claims?` · Claims: ${claims}`:''}${riv?` · Rivals: ${riv}`:''}${fr?` · Friends: ${fr}`:''}</div></div>`;});
+  h+=`<button class="go" onclick="document.getElementById('codex').classList.remove('show')">Close</button>`;
+  document.getElementById('codexBody').innerHTML=h;document.getElementById('codex').classList.add('show');}
+function showEnd(won,winner){const wn=(winner&&NATIONS[winner])?NATIONS[winner].name:'No one';const pn=(PLAYER&&NATIONS[PLAYER])?NATIONS[PLAYER].name:'Your nation';document.getElementById('ovTitle').textContent=won?'VICTORY':'DEFEAT';
+  let b=`<div style="font-size:14px;margin-bottom:4px">${won?`${pn} stands supreme over all Aurca after ${fmtDate(time)}.`:(alive(PLAYER)?`The war ended — ${wn} dominates the continent.`:`${pn}'s capital has fallen, and its crown is broken.`)}</div>`;
+  b+=`<h4 class="sec" style="text-align:left">Final Standing</h4>`;
+  NIDS.filter(n=>alive(n)).sort((a,b2)=>provs(b2)-provs(a)).forEach(n=>{b+=`<div class="st" style="text-align:left">${flagHTML(n)}<span class="nm">${NATIONS[n].name}${S[n].overlord?` <span class="small">(vassal of ${NATIONS[S[n].overlord].name})</span>`:''}</span><span class="pv">${provs(n)} prov.</span></div>`;});
+  b+=`<h4 class="sec" style="text-align:left">Chronicle of the War</h4><div style="max-height:32vh;overflow-y:auto;text-align:left;font-size:12.5px;line-height:1.65;border:1px solid var(--edge);border-radius:8px;padding:8px 10px;background:var(--panel2)">`;
+  if(!chronicle.length)b+='<div class="small">A quiet age — little of note came to pass.</div>';
+  else chronicle.forEach(e=>{b+=`<div style="margin:2px 0"><span style="color:#a99a7e">${fmtDate(e.d)}</span> — ${e.t}</div>`;});
+  b+=`</div>`;
+  document.getElementById('ovText').innerHTML=b;document.getElementById('overlay').classList.add('show');}
+
+// ===================================================== LOOP
+let last=performance.now(),uiClock=0;
+function loop(now){const real=(now-last)/1000;last=now;
+  if(started&&!paused&&!gameOver){let dt=real*DAYS_PER_SEC*speed;if(dt>0.4)dt=0.4;time+=dt;
+    for(const n of NIDS){if(!alive(n))continue;maybeEvent(n,dt);electionTick(n,dt);if(n===PLAYER)continue;const s=S[n];s.aiT+=dt;if(s.aiT>=1){const d=s.aiT;s.aiT=0;aiTurn(n,d);}}
+    step(dt);uiClock+=dt;if(uiClock>0.5){uiClock=0;renderTab();renderArmyPanel();renderProvPanel();renderFeed();if(document.getElementById('focusScreen').classList.contains('show'))renderFocus();}}
+  draw();updateTop();requestAnimationFrame(loop);}
+window.addEventListener('resize',resize);
+genWorld();buildPicks();renderTab();updateTop();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
