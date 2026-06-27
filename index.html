@@ -107,6 +107,7 @@
     <button class="ctl" id="focusBtn" title="National Focus">🎯</button>
     <button class="ctl" id="designBtn" title="Design Bureau">🛠️</button>
     <button class="ctl" id="genBtn" title="Marshals">🎖</button>
+    <button class="ctl" id="ecoBtn" title="Treasury & Budget">💰</button>
     <button class="ctl" id="howtoBtn" title="How to Play">❓</button>
     <button class="ctl" id="annalsBtn" title="Annals / History">📖</button>
     <button class="ctl" id="worldBtn" title="World Codex">📜</button>
@@ -162,6 +163,8 @@
   <div class="overlay" id="tutorial" style="z-index:25"><div class="modal" id="tutBody" style="max-width:440px;text-align:center"></div></div>
   <div class="overlay" id="designScreen"><div class="modal" id="designBody"></div></div>
   <div class="overlay" id="eventScreen"><div class="modal" id="eventBody" style="text-align:center;max-width:470px"></div></div>
+  <div class="overlay" id="peaceScreen"><div class="modal" id="peaceBody" style="max-width:480px"></div></div>
+  <div class="overlay" id="ecoScreen"><div class="modal" id="ecoBody" style="max-width:500px"></div></div>
   <div class="overlay" id="overlay"><div class="modal" style="text-align:center"><h2 id="ovTitle">Victory</h2><p id="ovText"></p><button class="go" id="ovBtn">New campaign</button></div></div>
 
 <script>
@@ -227,6 +230,15 @@ const CONS_LAWS={volunteer:{nm:"Volunteer Army",d:"few recruits, +stability",mp:
   extensive:{nm:"Extensive Conscription",d:"+50% recruits, −stability",mp:1.5,stab:-0.016},
   total:{nm:"Total Mobilisation",d:"+100% recruits, −−stability",mp:2.0,stab:-0.03}};
 function hasAdv(n,id){return S[n].cabinet.has(id);}
+const WONDERS=[
+  {id:"arsenal",name:"The Grand Arsenal",cost:240,d:"+2 arsenals, +10% attack forever",eff:n=>{S[n].mil+=2;F(n,'atk');}},
+  {id:"academy",name:"Royal War Academy",cost:240,d:"+1 Drill, +10% attack, a veteran general",eff:n=>{S[n].tech.doctrine++;F(n,'atk');const g=makeGen(n);g.lvl=3;S[n].gens.push(g);}},
+  {id:"exchange",name:"The Great Exchange",cost:220,d:"+15% gold & knowledge, +150 gold",eff:n=>{F(n,'trade');S[n].pp+=150;}},
+  {id:"observatory",name:"The Grand Observatory",cost:220,d:"+1 Manufacturing, +120 knowledge, national spirit",eff:n=>{F(n,'spirit');S[n].rp+=120;if(S[n].tech.industry<6)S[n].tech.industry++;}},
+  {id:"citadel",name:"The Great Citadel",cost:260,d:"Impregnable capital (fort 5) + national defence",eff:n=>{F(n,'def');if(H[capitals[n]])H[capitals[n]].fort=5;}},
+  {id:"dockyards",name:"The Royal Dockyards",cost:240,d:"+1 arsenal, +1 Gunnery, masters of the sea",eff:n=>{S[n].mil++;F(n,'naval');if(S[n].tech.gunnery<6)S[n].tech.gunnery++;}},
+  {id:"avenue",name:"Triumphal Avenue",cost:200,d:"National pride: +stability, +60 political power",eff:n=>{F(n,'spirit');S[n].stab=Math.min(85,S[n].stab+15);S[n].infl+=60;}},
+];
 const RESOURCES=["saltpetre","iron","horses","timber"];
 const RES_ICON={saltpetre:"🜍",iron:"⛏",horses:"🐎",timber:"🪵"};
 const RES_NAME={saltpetre:"Saltpetre",iron:"Iron",horses:"Horses",timber:"Timber"};
@@ -477,13 +489,13 @@ const alive=n=>S[n]&&!S[n].elim;
 const ideoOf=n=>IDEO[S[n].ideoKey];
 function newNationState(n){return{elim:false,ideoKey:NATIONS[n].ideo,pp:45,rp:0,mp:60,civ:0,mil:0,
   tech:{musket:0,gunnery:0,horse:0,industry:0,doctrine:0},research:["musket","industry"],resProg:{},
-  conQ:[],milQ:[],foc:{},focus:null,focProg:0,focDone:new Set(),
+  conQ:[],milQ:[],foc:{},focus:null,focProg:0,focDone:new Set(),wonders:new Set(),wonder:null,wonderProg:0,
   cb:new Set(),justify:null,war:new Set(),ally:new Set(),rel:{},gens:[],
   overlord:null,puppets:new Set(),startProv:8,stab:55,unrest:0,support:0,supporter:0,aggression:0,
   infl:30,cabinet:new Set(),ecoLaw:'peace',consLaw:'limited',warEffic:1,resBal:{saltpetre:0,iron:0,horses:0,timber:0},
   leader:randLeader(),leadCD:0,electT:0,cands:null,
   des:{custom:{land:{name:"New Model Regiment",fpw:0,arm:0,tuf:0,drl:0,mob:0},ship:{name:"Grand Frigate",gun:0,hul:0,sai:0,crw:0}},uniform:NATIONS[n].col},
-  aiT:0,aiClock:0,aiDip:0,aiFoc:0,event:0};}
+  aiT:0,aiClock:0,aiDip:0,aiFoc:0,event:0,chainQ:[]};}
 const LEAD_NAMES=["Aldous","Berta","Caspian","Dorothea","Ferran","Greta","Halden","Ingrid","Joren","Klara","Lucan","Mireille","Osric","Petra","Rosalind","Theron","Ulrika","Wendel"];
 const LEAD_TRAITS=[
   {id:"general",nm:"The Old Soldier",d:"+12% attack",atk:.12},
@@ -599,6 +611,7 @@ function econ(n,dt){const s=S[n],id=ideoOf(n),pv=provs(n);const indMul=1+0.08*s.
   for(const cat of slots){if(s.rp<=0)break;const add=Math.min(RES*dt,s.rp);s.resProg[cat]=(s.resProg[cat]||0)+add;s.rp-=add;const need2=40+s.tech[cat]*28;if(s.resProg[cat]>=need2){s.tech[cat]++;s.resProg[cat]=0;if(n===PLAYER)toast(`Researched ${TECHS[cat].name} ${s.tech[cat]}`);}}
   if(s.conQ.length){const rate=(CONSTRUCT_BASE+0.5*s.civ)*(1+0.08*s.tech.industry+id.con+(s.foc.prod?0.1:0)+leaderB(n,'con')+(hasAdv(n,'quartermaster')?0.15:0));const it=s.conQ[0],PP=2.5,want=rate*dt,got=Math.min(want,s.pp/PP);it.prog+=got;s.pp-=got*PP;if(it.prog>=it.cost){finishCon(n,it);s.conQ.shift();}}
   if(s.milQ.length){const rate=(MILBUILD_BASE+0.6*s.mil)*eco.mil;const it=s.milQ[0];it.prog+=rate*dt;if(it.prog>=it.cost){deployUnit(n,it.type);s.milQ.shift();}}
+  if(s.wonder){const w=WONDERS.find(x=>x.id===s.wonder);if(!w){s.wonder=null;}else{const rate=(CONSTRUCT_BASE+0.45*s.civ)*(1+0.08*s.tech.industry+id.con+leaderB(n,'con')),PP=3.0,want=rate*dt,got=Math.min(want,s.pp/PP);s.wonderProg+=got;s.pp-=got*PP;if(s.wonderProg>=w.cost){w.eff(n);s.wonders.add(w.id);s.wonder=null;s.wonderProg=0;chron(`🏛 ${NATIONS[n].name} completed a great work: ${w.name}.`);if(n===PLAYER)toast(`🏛 Wonder complete: ${w.name}!`);}}}
   // focus progress
   if(s.focus){s.focProg+=dt;const node=treeFor(n).find(f=>f.id===s.focus);if(node&&s.focProg>=node.days){node.eff(n);s.focDone.add(node.id);if(n===PLAYER)toast(`Focus complete: ${node.name}`+(node.war?` — casus belli on ${NATIONS[node.war].name}`:''));s.focus=null;s.focProg=0;}}
   // justify war
@@ -683,6 +696,7 @@ function aiTurn(n,dt){const s=S[n];
   if(s.war.size&&s.infl>=40&&s.ecoLaw==='peace'){s.infl-=40;s.ecoLaw='war';}
   if(s.war.size&&s.mp<25&&s.infl>=40&&s.consLaw!=='extensive'&&s.consLaw!=='total'){s.infl-=40;s.consLaw='extensive';}
   if(s.conQ.length<2){const pv=provs(n);if(s.civ<pv/3&&s.pp>30)s.conQ.push({kind:"civ",cost:60,prog:0});else if(s.mil<Math.max(2,pv/5))s.conQ.push({kind:"mil",cost:80,prog:0});else if(H[capitals[n]]&&H[capitals[n]].fort<4)s.conQ.push({kind:"fort",hex:capitals[n],cost:45,prog:0});}
+  if(!s.wonder&&s.wonders.size<3&&s.civ>=4&&s.pp>140&&Math.random()<0.4){const av=WONDERS.filter(w=>!s.wonders.has(w.id));if(av.length)s.wonder=av[Math.floor(Math.random()*av.length)].id;}
   if(s.milQ.length<3&&s.mp>30){const r=Math.random();let type;
     if(n===1)type=r<0.4?"ship":r<0.62?"line":r<0.82?"gren":(unitUnlocked(n,"liner")?"liner":"horse"); // Pirati: corsair fleet
     else{const pool=["line","gren","cannon","horse","ship"];if(unitUnlocked(n,"guard"))pool.push("guard");if(unitUnlocked(n,"liner"))pool.push("liner");if(unitUnlocked(n,"air"))pool.push("air");type=pool[Math.floor(r*pool.length)];}
@@ -735,7 +749,7 @@ function freePuppet(sub){const o=S[sub].overlord;if(o!=null&&S[o])S[o].puppets.d
 function regionOwner(reg){const c={};for(const k in H){const h=H[k];if(h.region===reg&&h.land&&h.owner)c[h.owner]=(c[h.owner]||0)+1;}let best=0,bv=0;for(const o in c)if(c[o]>bv){bv=c[o];best=+o;}return best;}
 function liberate(nn,from,asPuppet,strange){if(!S[nn].elim)return false;const reg=nn===8?'U':'M';
   const hexes=Object.values(H).filter(h=>h.region===reg&&h.owner===from);if(hexes.length<1)return false;
-  const s=S[nn];s.elim=false;s.war=new Set();s.ally=new Set();s.puppets=new Set();s.overlord=null;s.cb=new Set();s.conQ=[];s.milQ=[];s.focDone=new Set();s.focus=null;s.focProg=0;s.foc={};
+  const s=S[nn];s.elim=false;s.war=new Set();s.ally=new Set();s.puppets=new Set();s.overlord=null;s.cb=new Set();s.conQ=[];s.milQ=[];s.focDone=new Set();s.focus=null;s.focProg=0;s.foc={};s.chainQ=[];s.wonders=new Set();s.wonder=null;s.wonderProg=0;
   s.ideoKey=strange||LORE[nn].ideo;s.leader=randLeader();s.stab=55;s.civ=1;s.mil=1;s.pp=40;s.mp=hexes.length*7;
   for(const h of hexes){h.owner=nn;h.core=nn;}
   let sx=0,sy=0;hexes.forEach(h=>{const[x,y]=pxOf(h.col,h.row);sx+=x;sy+=y;});sx/=hexes.length;sy/=hexes.length;
@@ -827,7 +841,11 @@ function renderTab(){if(!PLAYER){document.getElementById('tabcontent').innerHTML
     if(s.conQ.length){const cr=Math.max(0.01,(CONSTRUCT_BASE+0.5*s.civ)*(1+0.08*s.tech.industry+ideoOf(PLAYER).con+(s.foc.prod?0.1:0)+leaderB(PLAYER,'con')));h+=`<div class="small" style="margin-top:6px">Works underway:</div>`;s.conQ.forEach(it=>{const eta=Math.ceil((it.cost-it.prog)/cr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span>${it.kind==="civ"?"Manufactory":it.kind==="mil"?"Arsenal":"Fortress"}</span><span class="small">~${eta}d</span></div>${bar(it.prog/it.cost,"#d8af4e")}</div>`;});}
     h+=`<h4 class="sec">Muster Regiments — ${Math.floor(s.mp)} recruits</h4>`;
     for(const t of UKEYS){const u=UNIT[t],lock=!unitUnlocked(PLAYER,t),mp=unitStat(PLAYER,t,'mp');h+=`<button class="btn" data-act="recruit" data-type="${t}" ${(!lock&&s.mp>=mp)?'':'disabled'}><span>${unitName(PLAYER,t)}${u.custom?' ✦':''}${lock?' 🔒':''}</span><span class="cost">${lock?`needs ${TECHS[u.req.tech].name} ${u.req.lvl}`:`${Math.round(mp)} rec · atk ${Math.round(unitStat(PLAYER,t,'atk'))} def ${Math.round(unitStat(PLAYER,t,'def'))}`}</span></button>`;}
-    if(s.milQ.length){const mr=Math.max(0.01,MILBUILD_BASE+0.6*s.mil);h+=`<div class="small" style="margin-top:6px">In the depots:</div>`;s.milQ.forEach(it=>{const eta=Math.ceil((it.cost-it.prog)/mr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span>${unitName(PLAYER,it.type)}</span><span class="small">~${eta}d</span></div>${bar(it.prog/it.cost,"#7fc6ff")}</div>`;});}}
+    if(s.milQ.length){const mr=Math.max(0.01,MILBUILD_BASE+0.6*s.mil);h+=`<div class="small" style="margin-top:6px">In the depots:</div>`;s.milQ.forEach(it=>{const eta=Math.ceil((it.cost-it.prog)/mr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span>${unitName(PLAYER,it.type)}</span><span class="small">~${eta}d</span></div>${bar(it.prog/it.cost,"#7fc6ff")}</div>`;});}
+    h+=`<h4 class="sec">🏛 Great Projects</h4>`;
+    if(s.wonder){const w=WONDERS.find(x=>x.id===s.wonder),wr=Math.max(0.01,(CONSTRUCT_BASE+0.45*s.civ)*(1+0.08*s.tech.industry+ideoOf(PLAYER).con+leaderB(PLAYER,'con'))),eta=Math.ceil((w.cost-s.wonderProg)/wr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span><b style="color:#d8af4e">${w.name}</b></span><span class="small">~${eta}d</span></div><div class="small">${w.d}</div>${bar(s.wonderProg/w.cost,"#d8af4e")}</div>`;}
+    else{const avail=WONDERS.filter(w=>!s.wonders.has(w.id));if(!avail.length)h+=`<div class="small">Every great work is complete — your nation is the envy of Aurca.</div>`;avail.forEach(w=>{h+=`<button class="btn" data-act="wonder" data-id="${w.id}"><span>🏛 ${w.name}</span><span class="cost">${w.cost}</span></button><div class="small" style="margin:-4px 0 7px;opacity:.85">${w.d}</div>`;});}
+    if(s.wonders.size)h+=`<div class="small" style="margin-top:4px">Completed: ${[...s.wonders].map(id=>WONDERS.find(w=>w.id===id).name).join(', ')}</div>`;}
   else if(TAB==="research"){h+=`<h4 class="sec">Sciences (2 slots · ${Math.floor(s.rp)} knowledge)</h4>`;
     for(const cat in TECHS){const T=TECHS[cat],lvl=s.tech[cat],active=s.research.includes(cat),done=lvl>=T.max,need=40+lvl*28,prog=done?1:(s.resProg[cat]||0)/need;
       h+=`<div class="card"><div class="kv"><span><b style="color:${active?'#d8af4e':'#efe7d6'}">${T.name}</b> · ${lvl}/${T.max}</span>${done?'<span class="pill" style="background:#1f4a2a;color:#9fe6b0">MAX</span>':active?'<span class="pill" style="background:#3a3417;color:#d8af4e">STUDYING</span>':`<button class="btn" style="width:auto;padding:3px 8px;margin:0" data-act="research" data-cat="${cat}">Study</button>`}</div><div class="small">${T.desc}</div>${done?'':bar(prog,"#7fc6ff")}</div>`;}}
@@ -859,7 +877,7 @@ function renderTab(){if(!PLAYER){document.getElementById('tabcontent').innerHTML
       h+=`<div class="arow">`;
       if(myVassal)h+=`<button class="btn" data-act="release" data-n="${n}">Release vassal</button>`;
       else if(!myLord){
-        if(war){h+=`<button class="btn" data-act="peace" data-n="${n}">White peace</button>`;if(provs(n)<S[n].startProv*0.75)h+=`<button class="btn" data-act="reparations" data-n="${n}">Dictate peace (+gold)</button>`;if(provs(n)>0&&provs(n)<=provs(PLAYER)*0.45)h+=`<button class="btn gold" data-act="vassal" data-n="${n}">Demand vassalage</button>`;}
+        if(war){h+=`<button class="btn" data-act="peace" data-n="${n}">White peace</button><button class="btn gold" data-act="conf" data-n="${n}">⚖ Peace Conference</button>`;}
         else{if(cb)h+=`<button class="btn" data-act="war" data-n="${n}">Declare war</button>`;else if(just)h+=`<div class="qitem" style="flex:1">Justifying… ${Math.ceil(s.justify.need-s.justify.prog)}d${bar(s.justify.prog/s.justify.need,"#d8af4e")}</div>`;else h+=`<button class="btn" data-act="justify" data-n="${n}" ${s.justify?'disabled':''}>Justify war</button>`;
           if(!ally&&!cb)h+=`<button class="btn" data-act="ally" data-n="${n}" ${rel>=20?'':'disabled'}>Alliance</button>`;}}
       h+=`</div></div>`;}
@@ -957,9 +975,43 @@ const EVENTS=[
     {l:"Imprison the pretender (+stability)",e:n=>F(n,'spirit')},
     {l:"Buy his silence with gold (−80 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-80)}]},
 ];
+// Multi-step branching storylines: a choice can queue a follow-up node (next) after a delay.
+const CHAINS={
+  succ_ill:{t:"📜 The King Falls Gravely Ill",d:"The sovereign has taken to bed with a wasting fever. The court holds its breath, and ambitious men sharpen their plans.",c:[
+    {l:"Summon the finest physicians (−60 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-60),next:"succ_recover",delay:22},
+    {l:"Leave the matter in God's hands",e:n=>{},next:"succ_death",delay:22}]},
+  succ_recover:{t:"📜 The King Recovers",d:"Against all odds the monarch rallies and returns to the throne, beloved as never before.",c:[
+    {l:"Proclaim a day of thanksgiving (+stability)",e:n=>F(n,'spirit')},
+    {l:"Found a new academy in gratitude (+80 knowledge)",e:n=>S[n].rp+=80}]},
+  succ_death:{t:"📜 The Throne Stands Empty",d:"The king is dead. With no clear successor the realm teeters between order and ambition.",c:[
+    {l:"Crown the young prince under a regency",e:n=>{S[n].stab=Math.min(64,S[n].stab+4);},next:"succ_regency",delay:25},
+    {l:"Let the great nobles elect a king (+90 power, −stability)",e:n=>{S[n].infl+=90;S[n].stab=Math.max(0,S[n].stab-10);}}]},
+  succ_regency:{t:"📜 The Regency Council",d:"A council rules in the boy-king's name — already the regents scheme for influence.",c:[
+    {l:"Strengthen the crown's authority (+60 power)",e:n=>S[n].infl+=60},
+    {l:"Appease the noble houses (+stability, −40 power)",e:n=>{F(n,'spirit');S[n].infl=Math.max(0,S[n].infl-40);}}]},
+  plot_whispers:{t:"📜 Whispers of a Plot",d:"Your spymaster brings word of a conspiracy festering among the court and the regiments.",c:[
+    {l:"Investigate quietly (−40 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-40),next:"plot_found",delay:18},
+    {l:"Dismiss it as idle rumour",e:n=>{},next:"plot_coup",delay:30}]},
+  plot_found:{t:"📜 The Conspirators Unmasked",d:"Your agents seize the ringleaders before they can strike. Their fate is yours to decide.",c:[
+    {l:"Public executions (+stability, −20 power)",e:n=>{F(n,'spirit');S[n].infl=Math.max(0,S[n].infl-20);}},
+    {l:"Show mercy and win their loyalty (+70 power)",e:n=>S[n].infl+=70}]},
+  plot_coup:{t:"📜 The Coup Erupts!",d:"The plot you ignored bursts into the open — armed men march on the palace at dawn.",c:[
+    {l:"The loyal guard crushes them (−50 recruits, +stability)",e:n=>{S[n].mp=Math.max(0,S[n].mp-50);F(n,'spirit');}},
+    {l:"The capital burns before order returns (−15 stability, −60 power)",e:n=>{S[n].stab=Math.max(0,S[n].stab-15);S[n].infl=Math.max(0,S[n].infl-60);}}]},
+  colony_charter:{t:"📜 A Charter for the Far Indies",d:"Merchant adventurers petition for a royal charter to sail beyond Aurca's edge in search of riches.",c:[
+    {l:"Fund the expedition (−110 gold)",e:n=>S[n].pp=Math.max(0,S[n].pp-110),next:"colony_return",delay:35},
+    {l:"Decline the risk, keep men home (+60 recruits)",e:n=>S[n].mp+=60}]},
+  colony_return:{t:"📜 The Fleet Returns",d:"After long silence, sails crest the horizon — the expedition has come home laden with the spoils of distant shores.",c:[
+    {l:"Found a chartered trading company (+15% gold & knowledge)",e:n=>F(n,'trade')},
+    {l:"Distribute the spoils to the realm (+220 gold, +stability)",e:n=>{S[n].pp+=220;F(n,'spirit');}}]},
+};
+const CHAIN_STARTS=["succ_ill","plot_whispers","colony_charter"];
 let pendingEvent=null, eventWasPaused=false;
-function maybeEvent(n,dt){const s=S[n];s.event+=dt;if(s.event>50){s.event=0;if(Math.random()<0.55){const ev=EVENTS[Math.floor(Math.random()*EVENTS.length)];
-  if(n===PLAYER&&!pendingEvent){pendingEvent={ev,n};showEventModal();}else ev.c[Math.floor(Math.random()*ev.c.length)].e(n);}}}
+function enqueueChain(n,id,delay){if(CHAINS[id])S[n].chainQ.push({id,t:delay||28});}
+function fireNode(n,node){if(n===PLAYER&&!pendingEvent){pendingEvent={ev:node,n};showEventModal();}else{const ch=node.c[Math.floor(Math.random()*node.c.length)];ch.e(n);if(ch.next)enqueueChain(n,ch.next,ch.delay);}}
+function maybeEvent(n,dt){const s=S[n];if(!s.chainQ)s.chainQ=[];
+  if(s.chainQ.length){for(const q of s.chainQ)q.t-=dt;const ready=s.chainQ.find(q=>q.t<=0);if(ready&&!(n===PLAYER&&pendingEvent)){s.chainQ=s.chainQ.filter(q=>q!==ready);fireNode(n,CHAINS[ready.id]);return;}}
+  s.event+=dt;if(s.event>50){s.event=0;if(Math.random()<0.55){if(Math.random()<0.32)fireNode(n,CHAINS[CHAIN_STARTS[Math.floor(Math.random()*CHAIN_STARTS.length)]]);else fireNode(n,EVENTS[Math.floor(Math.random()*EVENTS.length)]);}}}
 function showEventModal(){if(!pendingEvent)return;const ev=pendingEvent.ev;let h=`<h2>${ev.t}</h2><p>${ev.d}</p>`;ev.c.forEach((c,i)=>{h+=`<button class="btn" data-ev="${i}" style="text-align:center;justify-content:center;margin-bottom:8px">${c.l}</button>`;});document.getElementById('eventBody').innerHTML=h;document.getElementById('eventScreen').classList.add('show');eventWasPaused=paused;paused=true;}
 
 // ===================================================== INPUT
@@ -983,6 +1035,7 @@ cv.addEventListener('mouseleave',()=>{document.getElementById('hexInfo').style.d
 document.getElementById('tabcontent').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||!PLAYER)return;const act=b.dataset.act,s=S[PLAYER];
   if(act==="con"){const kind=b.dataset.kind,cost=kind==="civ"?60:kind==="mil"?80:45;if(s.pp<10)return toast("Treasury too low");s.conQ.push(kind==="fort"?{kind,hex:selected.key,cost,prog:0}:{kind,cost,prog:0});}
   else if(act==="recruit"){const t=b.dataset.type;if(!unitUnlocked(PLAYER,t)||s.mp<unitStat(PLAYER,t,'mp'))return;s.mp-=unitStat(PLAYER,t,'mp');s.milQ.push({type:t,cost:unitStat(PLAYER,t,'build'),prog:0});}
+  else if(act==="wonder"){const id=b.dataset.id;if(s.wonder)return toast("A great work is already underway");if(s.wonders.has(id))return;if(s.pp<10)return toast("Treasury too low");s.wonder=id;s.wonderProg=0;toast("🏛 Great work begun — it will take years");}
   else if(act==="research"){const cat=b.dataset.cat;if(s.research.includes(cat))return;s.research=s.research.filter(x=>x);if(s.research.length>=2)s.research.shift();s.research.push(cat);}
   else if(act==="ideo"){s.ideoKey=b.dataset.key;toast("The government is reconstituted");}
   else if(act==="openfocus"){openFocus();}
@@ -990,8 +1043,7 @@ document.getElementById('tabcontent').addEventListener('click',e=>{const b=e.tar
   else if(act==="peace")makePeace(PLAYER,+b.dataset.n);
   else if(act==="ally"){if(makeAlliance(PLAYER,+b.dataset.n))toast("Alliance sealed");}
   else if(act==="justify"){if(!s.justify)s.justify={t:+b.dataset.n,prog:0,need:25};}
-  else if(act==="vassal"){makePuppet(PLAYER,+b.dataset.n);}
-  else if(act==="reparations"){const t=+b.dataset.n;makePeace(PLAYER,t);S[PLAYER].pp+=100+provs(t)*5;toast(`Dictated peace — ${NATIONS[t].name} pays reparations`);}
+  else if(act==="conf"){openPeace(+b.dataset.n);}
   else if(act==="support"){const reg=b.dataset.reg,owner=regionOwner(reg),nn=reg==='M'?9:8;const cost=hasAdv(PLAYER,'spymaster')?40:50,gain=hasAdv(PLAYER,'spymaster')?30:22;if(owner&&owner!==PLAYER&&s.pp>=cost&&S[nn].elim){s.pp-=cost;S[nn].support=Math.min(100,(S[nn].support||0)+gain);S[nn].supporter=PLAYER;S[owner].rel[PLAYER]=(S[owner].rel[PLAYER]||0)-12;S[owner].stab=Math.max(0,S[owner].stab-3);toast(`You fund the ${NATIONS[nn].name} uprising — now ${Math.round(S[nn].support)}%`);}}
   else if(act==="release"){const t=+b.dataset.n;freePuppet(t);s.ally.delete(t);S[t].ally.delete(PLAYER);toast("Vassal released to independence");}
   else if(act==="advisor"){const av=ADVISORS.find(x=>x.id===b.dataset.id);if(av&&!s.cabinet.has(av.id)&&s.infl>=av.cost){s.infl-=av.cost;s.cabinet.add(av.id);toast(`Appointed ${av.slot}`);}}
@@ -1028,8 +1080,85 @@ function renderGenerals(){if(!PLAYER)return;const gs=S[PLAYER].gens;let h=`<h2>�
 document.getElementById('genBtn').addEventListener('click',renderGenerals);
 document.getElementById('generals').addEventListener('click',e=>{if(e.target.id==='generals')e.currentTarget.classList.remove('show');});
 function openDesign(){if(!PLAYER)return;renderDesign();document.getElementById('designScreen').classList.add('show');}
+let peaceTarget=null,peaceSel=new Set();
+function occHeld(att,def){let c=0;for(const k in H){const h=H[k];if(h.land&&h.core===def&&h.owner===att)c++;}return c;}
+function warScore(att,def){const occ=occHeld(att,def);let defCore=0;for(const k in H){const h=H[k];if(h.land&&h.core===def)defCore++;}const frac=defCore?occ/defCore:0;let sc=Math.floor(occ*1.1+frac*6);if(S[def].stab<25)sc+=2;if(provs(def)<S[def].startProv*0.6)sc+=2;return Math.max(0,sc);}
+function peaceOptions(e){const occ=occHeld(PLAYER,e),opts=[];
+  if(occ>0)opts.push({id:'annex',cost:occ,label:`Annex occupied territory (${occ} province${occ>1?'s':''})`,desc:'Core the lands your armies hold so they become loyal provinces. Unannexed land stays as restless occupied territory.'});
+  if(provs(e)>0&&provs(e)<=provs(PLAYER)*0.6)opts.push({id:'puppet',cost:5,label:`Install a puppet government`,desc:`${NATIONS[e].name} becomes your vassal and pays tribute. (Occupied land returns to them.)`});
+  opts.push({id:'repar',cost:2,label:'War reparations',desc:'Drain their treasury — gold and knowledge for you.'});
+  if(regionOwner('U')===e&&S[8].elim)opts.push({id:'free8',cost:3,label:'Free Cruv',desc:'Force the release of an independent Cruv.'});
+  if(regionOwner('M')===e&&S[9].elim)opts.push({id:'free9',cost:3,label:'Free Mangobi',desc:'Force the release of an independent Mangobi.'});
+  return opts;}
+function peaceSpent(e){let t=0;peaceOptions(e).forEach(o=>{if(peaceSel.has(o.id))t+=o.cost;});return t;}
+function openPeace(e){if(!alive(e)||!S[PLAYER].war.has(e))return;peaceTarget=e;peaceSel=new Set();paused=true;document.getElementById('pause').textContent='▶';renderPeace();document.getElementById('peaceScreen').classList.add('show');}
+function renderPeace(){const e=peaceTarget;if(!e)return;const budget=warScore(PLAYER,e),spent=peaceSpent(e),rem=budget-spent;
+  let h=`<h2 style="margin-bottom:2px">⚖ Peace Conference</h2><div class="small" style="margin-bottom:8px">Terms dictated to ${flagHTML(e)} <b>${NATIONS[e].name}</b></div>`;
+  h+=`<div class="card" style="display:flex;justify-content:space-between"><span>War score</span><b style="color:#d8af4e">${spent} / ${budget}</b></div>`;
+  if(budget===0)h+=`<div class="small" style="margin:6px 0;color:#ff9aa7">You haven’t beaten them enough to demand anything. Occupy their land first, or sign a white peace.</div>`;
+  peaceOptions(e).forEach(o=>{const on=peaceSel.has(o.id),afford=on||o.cost<=rem;
+    h+=`<button class="btn ${on?'gold':''}" data-pd="${o.id}" ${afford?'':'disabled'} style="text-align:left;align-items:flex-start;${afford?'':'opacity:.4'}"><span>${on?'☑ ':'☐ '}${o.label}</span><span class="cost">${o.cost}</span></button><div class="small" style="margin:-4px 0 7px;opacity:.85">${o.desc}</div>`;});
+  h+=`<div style="display:flex;gap:8px;margin-top:6px"><button class="go" id="peaceSign" style="flex:1">Sign treaty</button><button class="btn" id="peaceCancel" style="flex:0 0 auto">Cancel</button></div>`;
+  document.getElementById('peaceBody').innerHTML=h;}
+function closePeace(){document.getElementById('peaceScreen').classList.remove('show');peaceTarget=null;peaceSel=new Set();}
+function signPeace(){const e=peaceTarget;if(!e)return;const sel=peaceSel;
+  if(sel.has('puppet')){for(const k in H){const h=H[k];if(h.land&&h.core===e&&h.owner===PLAYER)h.owner=e;}makePuppet(PLAYER,e);}
+  else{if(sel.has('annex')){for(const k in H){const h=H[k];if(h.land&&h.core===e&&h.owner===PLAYER)h.core=PLAYER;}}
+    if(sel.has('free8'))liberate(8,e,false,null);if(sel.has('free9'))liberate(9,e,false,null);}
+  if(sel.has('repar')){S[PLAYER].pp+=120+provs(e)*4;S[PLAYER].rp+=60;}
+  const terms=[...sel].length?`extracting harsh terms`:`with no demands`;
+  makePeace(PLAYER,e,true);chron(`⚖ Treaty of Peace: ${NATIONS[PLAYER].name} dictates terms to ${NATIONS[e].name}, ${terms}.`);toast(`⚖ Treaty signed with ${NATIONS[e].name}`);
+  closePeace();renderTab();updateTop();}
+document.getElementById('peaceScreen').addEventListener('click',e=>{const b=e.target.closest('[data-pd]');if(b){const id=b.dataset.pd;if(peaceSel.has(id))peaceSel.delete(id);else{if(id==='puppet'){peaceSel.delete('annex');peaceSel.delete('free8');peaceSel.delete('free9');}else peaceSel.delete('puppet');peaceSel.add(id);}renderPeace();return;}
+  if(e.target.id==='peaceSign')signPeace();else if(e.target.id==='peaceCancel'||e.target.id==='peaceScreen')closePeace();});
+function econReport(n){const s=S[n],id=ideoOf(n),pv=provs(n);const indMul=1+0.08*s.tech.industry,trade=s.foc.trade?1.15:1;
+  const eco=ECO_LAWS[s.ecoLaw]||ECO_LAWS.peace,cons=CONS_LAWS[s.consLaw]||CONS_LAWS.limited;
+  let cities=0,devp=0,occ=0;const prod={saltpetre:0,iron:0,horses:0,timber:0};
+  for(const k in H){const h=H[k];if(!h.land||h.owner!==n)continue;if(h.city)cities++;if(h.dev)devp+=h.dev;const occu=h.core>0&&h.core!==n;if(occu)occ++;if(h.res)prod[h.res]+=occu?0.5:1;}
+  const need={saltpetre:0,iron:0,horses:0,timber:0};for(const a of armies){if(a.nation!==n)continue;for(const u of UKEYS){const c=a.units[u];if(!c||!UNIT_RES[u])continue;for(const r in UNIT_RES[u])need[r]+=c*UNIT_RES[u][r];}}
+  let deficit=0;for(const r of RESOURCES){const net=prod[r]*3.2-need[r];if(net<0)deficit+=-net;}
+  const occProv=Math.max(0,pv-occ*(s.foc.occ?0.25:0.5));
+  let puppet=0;for(const q of s.puppets)if(alive(q))puppet+=provs(q)*0.25;
+  const taxes=cities*0.7+devp*0.22+Math.max(0,cities-1)*0.7;
+  const prodMul=(1+id.prod+(s.foc.prod?0.15:0)+leaderB(n,'prod')+(hasAdv(n,'treasurer')?0.14:0))*indMul*trade*eco.prod*(s.blockaded?0.7:1);
+  const production=(occProv*0.45+s.civ*1.4)*prodMul;
+  const resPenalty=-deficit*0.05;
+  let conDrain=0;if(s.conQ.length)conDrain=-(CONSTRUCT_BASE+0.5*s.civ)*(1+0.08*s.tech.industry+id.con+(s.foc.prod?0.1:0)+leaderB(n,'con')+(hasAdv(n,'quartermaster')?0.15:0))*2.5;
+  let wonDrain=0;if(s.wonder)wonDrain=-(CONSTRUCT_BASE+0.45*s.civ)*(1+0.08*s.tech.industry+id.con+leaderB(n,'con'))*3.0;
+  const rpCity=cities*0.2,rpBase=(1+s.civ*0.45)*(1+id.res+leaderB(n,'res')+(hasAdv(n,'philosopher')?0.18:0))*trade;
+  const slots=s.research.filter(c=>c&&s.tech[c]<TECHS[c].max).length;const rpSpend=-Math.min(slots*4.5,rpCity+rpBase);
+  const mpDev=devp*0.12,mpBase=pv*0.7*(1+id.mp+(s.foc.mp?0.3:0)+leaderB(n,'mp'))*cons.mp,mpCap=pv*15*(1+(s.foc.mp?0.30:0))*cons.mp;
+  const inflGain=0.12+(hasAdv(n,'diplomat')?0.02:0);
+  const stabWar=s.war.size?-0.022*s.war.size:0.05,stabLaw=eco.stab+cons.stab,stabOcc=-occ*(s.foc.occ?0.002:0.004);
+  return{cities,devp,occ,pv,deficit,warEffic:s.warEffic,resBal:s.resBal,
+    gold:{taxes,production,puppet,resPenalty,conDrain,wonDrain,net:taxes+production+puppet+resPenalty+conDrain+wonDrain},
+    rp:{gain:rpCity+rpBase,spend:rpSpend,net:rpCity+rpBase+rpSpend},
+    mp:{base:mpBase,dev:mpDev,cap:mpCap,net:mpDev+mpBase},
+    infl:inflGain,stab:{war:stabWar,law:stabLaw,occ:stabOcc,net:stabWar+stabLaw+stabOcc,cur:s.stab}};}
+function openEco(){if(!PLAYER)return;const R=econReport(PLAYER),s=S[PLAYER];
+  const sg=v=>`<b style="color:${v>=0?'#9fe6b0':'#ff9aa7'}">${v>=0?'+':''}${Math.round(v*10)/10}</b>`;
+  const row=(l,v)=>`<div class="kv"><span class="small">${l}</span>${sg(v)}</div>`;
+  const tot=v=>`<div class="kv" style="border-top:1px solid var(--edge);margin-top:4px;padding-top:4px"><b>Net / day</b>${sg(v)}</div>`;
+  let h=`<h2 style="margin-bottom:2px">💰 Treasury &amp; Budget</h2><div class="small" style="margin-bottom:8px">${NATIONS[PLAYER].name} — daily ledger (per in-game day)</div>`;
+  h+=`<div class="card"><div class="kv"><b>🪙 Treasury (gold)</b><b>${Math.floor(s.pp)}</b></div>`;
+  h+=row('Taxes — cities &amp; development',R.gold.taxes)+row('Production — manufactories &amp; land',R.gold.production);
+  if(R.gold.puppet)h+=row('Vassal tribute',R.gold.puppet);
+  if(R.gold.resPenalty)h+=row('Resource shortages',R.gold.resPenalty);
+  if(R.gold.conDrain)h+=row('Construction in progress',R.gold.conDrain);
+  if(R.gold.wonDrain)h+=row('Great project in progress',R.gold.wonDrain);
+  h+=tot(R.gold.net)+`</div>`;
+  h+=`<div class="card"><div class="kv"><b>📜 Knowledge</b><b>${Math.floor(s.rp)}</b></div>`+row('Academies &amp; manufactories',R.rp.gain)+row('Ongoing research',R.rp.spend)+tot(R.rp.net)+`</div>`;
+  h+=`<div class="card"><div class="kv"><b>🎖 Recruits</b><b>${Math.floor(s.mp)} / ${Math.floor(R.mp.cap)} cap</b></div>`+row('Conscription',R.mp.base)+row('Development',R.mp.dev)+`<div class="kv" style="border-top:1px solid var(--edge);margin-top:4px;padding-top:4px"><b>Gain / day</b>${sg(R.mp.net)}</div><div class="small">Recruits stop accruing once you hit the manpower cap.</div></div>`;
+  h+=`<div class="card"><div class="kv"><b>⚖ Stability</b><b>${Math.round(R.stab.cur)}%</b></div>`+row(s.war.size?`At war (${s.war.size} front${s.war.size>1?'s':''})`:'Peacetime',R.stab.war)+row('Laws &amp; economy',R.stab.law)+(R.stab.occ?row('Occupied territory',R.stab.occ):'')+tot(R.stab.net)+`</div>`;
+  h+=`<div class="card"><div class="kv"><b>👑 Political Power</b><b>${Math.floor(s.infl)}</b></div>`+row('Court &amp; cabinet',R.infl)+`</div>`;
+  h+=`<div class="card"><div class="kv"><b>⛓ Strategic Resources</b>${R.deficit>0?'<span class="pill" style="background:#4a1f1f;color:#ff9aa7">SHORTAGE</span>':'<span class="pill" style="background:#1f4a2a;color:#9fe6b0">BALANCED</span>'}</div>`;
+  for(const r of RESOURCES)h+=row(r.charAt(0).toUpperCase()+r.slice(1),s.resBal[r]||0);
+  if(R.deficit>0)h+=`<div class="small" style="color:#ff9aa7;margin-top:3px">Shortages cut army effectiveness to ${Math.round(s.warEffic*100)}% and bleed gold. Capture resource provinces or trim costly forces.</div>`;
+  h+=`</div><button class="go" id="ecoClose">Close</button>`;
+  document.getElementById('ecoBody').innerHTML=h;document.getElementById('ecoScreen').classList.add('show');}
+document.getElementById('ecoScreen').addEventListener('click',e=>{if(e.target.id==='ecoClose'||e.target.id==='ecoScreen')document.getElementById('ecoScreen').classList.remove('show');});
 document.getElementById('designBtn').addEventListener('click',openDesign);
-document.getElementById('eventBody').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b||!pendingEvent)return;const ch=pendingEvent.ev.c[+b.dataset.ev];ch.e(pendingEvent.n);chron(`📜 ${pendingEvent.ev.t}: ${NATIONS[pendingEvent.n].name} chose "${ch.l}"`);pendingEvent=null;document.getElementById('eventScreen').classList.remove('show');paused=eventWasPaused;document.getElementById('pause').textContent=paused?'▶':'❚❚';renderTab();updateTop();});
+document.getElementById('eventBody').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b||!pendingEvent)return;const n=pendingEvent.n,ch=pendingEvent.ev.c[+b.dataset.ev];ch.e(n);if(ch.next)enqueueChain(n,ch.next,ch.delay);chron(`📜 ${pendingEvent.ev.t}: ${NATIONS[n].name} chose "${ch.l}"`);pendingEvent=null;document.getElementById('eventScreen').classList.remove('show');paused=eventWasPaused;document.getElementById('pause').textContent=paused?'▶':'❚❚';renderTab();updateTop();});
 document.getElementById('designScreen').addEventListener('click',e=>{if(e.target.id==='designScreen')e.currentTarget.classList.remove('show');});
 document.getElementById('designBody').addEventListener('click',e=>{const b=e.target.closest('[data-des],[data-uni]');if(!b||!PLAYER)return;const s=S[PLAYER];
   if(b.dataset.uni){s.des.uniform=b.dataset.uni;renderDesign();return;}
@@ -1039,12 +1168,12 @@ document.getElementById('designBody').addEventListener('click',e=>{const b=e.tar
   renderDesign();});
 function saveGame(){if(!PLAYER||!started){toast('No campaign to save');return;}try{const snap={v:2,time,PLAYER,rot:ROT,speed,chronicle,hex:{},S:{},armies:armies.map(a=>Object.assign({},a)),capitals};
   for(const k in H){const h=H[k];snap.hex[k]={o:h.owner,c:h.core,f:h.fort,d:h.dev};}
-  for(const n of NIDS){const s=S[n];snap.S[n]=Object.assign({},s,{war:[...s.war],ally:[...s.ally],puppets:[...s.puppets],cb:[...s.cb],cabinet:[...s.cabinet],focDone:[...s.focDone]});}
+  for(const n of NIDS){const s=S[n];snap.S[n]=Object.assign({},s,{war:[...s.war],ally:[...s.ally],puppets:[...s.puppets],cb:[...s.cb],cabinet:[...s.cabinet],focDone:[...s.focDone],wonders:[...s.wonders]});}
   localStorage.setItem('batalon_save',JSON.stringify(snap));toast('💾 Campaign saved');}catch(e){toast('Save failed — '+e.message);}}
 function loadGame(){try{const raw=localStorage.getItem('batalon_save');if(!raw){toast('No saved campaign found');return;}const snap=JSON.parse(raw);
   genWorld();
   for(const k in snap.hex){if(H[k]){const o=snap.hex[k];H[k].owner=o.o;H[k].core=o.c;H[k].fort=o.f;H[k].dev=o.d;}}
-  for(const n of NIDS){const sn=snap.S[n];if(!sn)continue;const s=S[n];Object.assign(s,sn);s.war=new Set(sn.war);s.ally=new Set(sn.ally);s.puppets=new Set(sn.puppets);s.cb=new Set(sn.cb);s.cabinet=new Set(sn.cabinet);s.focDone=new Set(sn.focDone);}
+  for(const n of NIDS){const sn=snap.S[n];if(!sn)continue;const s=S[n];Object.assign(s,sn);s.war=new Set(sn.war);s.ally=new Set(sn.ally);s.puppets=new Set(sn.puppets);s.cb=new Set(sn.cb);s.cabinet=new Set(sn.cabinet);s.focDone=new Set(sn.focDone);s.wonders=new Set(sn.wonders||[]);}
   armies=snap.armies.map(a=>Object.assign({},a));capitals=snap.capitals;time=snap.time;PLAYER=snap.PLAYER;ROT=snap.rot||0;speed=snap.speed||1;chronicle=snap.chronicle||[];
   started=true;gameOver=false;paused=true;selected=null;selectedProv=null;
   rebuildProjection();resize();
@@ -1081,9 +1210,13 @@ function openHowto(){const h=`<h2>❓ How to Play</h2>
   • <b>Hover</b> any province for its name, terrain, resource and owner. <b>Q/E</b> or arrow keys rotate the map. <b>💾 / 📂</b> save & load.
   <h4 class="sec">The panels (right side)</h4>
   <b>NATION</b> overview & standings · <b>WAR</b> build factories, recruit troops, see resources · <b>TECH</b> research · <b>POLITICS</b> cabinet, laws, leader & focus · <b>DIPLO</b> war, peace, alliances, vassalage & funding rebellions.<br>
-  Top bar: 🎯 focus tree · 🛠️ design your own units · 🎖 your generals · 📖 the chronicle · 📜 the world.
-  <h4 class="sec">War</h4>
-  You need a <b>casus belli</b> to invade (earn one from your focus tree or "Justify war" in Diplomacy). A nation only <b>capitulates after losing ~70% of its land</b> — so conquer territory, don't just grab the capital. Terrain limits how many regiments fight at once (don't overstack mountains), keep armies <b>in supply</b>, and <b>escort sea crossings with warships</b> or enemy fleets will maul them. The side with more <b>Aeronaut Corps</b> wins air superiority.
+  Top bar: 🎯 focus tree · 🛠️ design your own units · 🎖 your generals · 💰 treasury &amp; budget · 📖 the chronicle · 📜 the world.
+  <h4 class="sec">Economy &amp; budget</h4>
+  Open <b>💰 Treasury</b> for a full daily ledger — where your gold, knowledge, recruits and stability come from and where they go. Build <b>Manufactories</b> for income, <b>Arsenals</b> to muster faster, and invest years into <b>🏛 Great Projects</b> (WAR tab) for powerful permanent bonuses.
+  <h4 class="sec">War &amp; peace</h4>
+  You need a <b>casus belli</b> to invade (earn one from your focus tree or "Justify war" in Diplomacy). A nation only <b>capitulates after losing ~70% of its land</b> — so conquer territory, don't just grab the capital. Terrain limits how many regiments fight at once (don't overstack mountains), keep armies <b>in supply</b>, and <b>escort sea crossings with warships</b> or enemy fleets will maul them. The side with more <b>Aeronaut Corps</b> wins air superiority. When you're winning, open the <b>⚖ Peace Conference</b> (DIPLO) to spend your <b>war score</b> on annexing land, installing a puppet, demanding reparations, or freeing a subject.
+  <h4 class="sec">Story events</h4>
+  Watch for <b>📜 events</b> — many are <b>multi-step storylines</b> (a sick king, a court plot, a colonial venture) where your choices ripple into later chapters. Choose wisely.
   <h4 class="sec">Tips</h4>
   Combined arms (infantry + artillery + cavalry) fight best · capture enemy <b>cities</b> to wreck their economy · occupied land resists and drains stability · keep your stability up or provinces revolt.
   </div>
@@ -1093,6 +1226,7 @@ function openHowto(){const h=`<h2>❓ How to Play</h2>
   document.getElementById('howWorld').addEventListener('click',()=>{document.getElementById('howto').classList.remove('show');openCodex();});
   document.getElementById('howTut').addEventListener('click',()=>{document.getElementById('howto').classList.remove('show');if(started)showTutorial();else toast('Start a campaign first');});}
 document.getElementById('howtoBtn').addEventListener('click',openHowto);
+document.getElementById('ecoBtn').addEventListener('click',openEco);
 document.getElementById('howto').addEventListener('click',e=>{if(e.target.id==='howto')e.currentTarget.classList.remove('show');});
 document.getElementById('tHelp').addEventListener('click',openHowto);
 document.getElementById('restart').addEventListener('click',openPicker);
