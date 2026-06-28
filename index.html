@@ -165,6 +165,7 @@
   <div class="overlay" id="eventScreen"><div class="modal" id="eventBody" style="text-align:center;max-width:470px"></div></div>
   <div class="overlay" id="peaceScreen"><div class="modal" id="peaceBody" style="max-width:480px"></div></div>
   <div class="overlay" id="ecoScreen"><div class="modal" id="ecoBody" style="max-width:500px"></div></div>
+  <div class="overlay" id="techScreen"><div class="modal" id="techBody" style="max-width:560px"></div></div>
   <div class="overlay" id="overlay"><div class="modal" style="text-align:center"><h2 id="ovTitle">Victory</h2><p id="ovText"></p><button class="go" id="ovBtn">New campaign</button></div></div>
 
 <script>
@@ -198,6 +199,11 @@ const SYL_B=["mont","ford","burgh","heim","wick","dale","gard","stad","mere","ha
 function provName(c,r){const a=Math.floor(hash2(c*7+1,r*7+2)*SYL_A.length)%SYL_A.length;const b=Math.floor(hash2(c*13+3,r*13+5)*SYL_B.length)%SYL_B.length;return SYL_A[a]+SYL_B[b];}
 const SEASONS=[{n:"Winter",i:"❄"},{n:"Spring",i:"🌱"},{n:"Summer",i:"☀"},{n:"Autumn",i:"🍂"}];
 function seasonIdx(t){const m=Math.floor((Math.floor(t)%365)/30.42);return (m>=11||m<2)?0:m<5?1:m<8?2:3;}
+const WEATHER={clear:{n:"Clear",i:"☀",mv:1,cb:1},rain:{n:"Rain",i:"🌧",mv:1.3,cb:0.9},snow:{n:"Snow",i:"🌨",mv:1.55,cb:0.85},storm:{n:"Storm",i:"⛈",mv:1.7,cb:0.78}};
+let weather={type:"clear",t:0};
+let REPAR=[]; // active war indemnities: {from,to,days,perDay}
+function weatherFor(se){const r=Math.random();if(se===0)return r<0.5?"snow":r<0.68?"storm":r<0.8?"rain":"clear";if(se===1)return r<0.45?"rain":r<0.55?"storm":"clear";if(se===2)return r<0.7?"clear":r<0.82?"rain":"storm";return r<0.45?"rain":r<0.57?"storm":"clear";}
+function updateWeather(dt){weather.t-=dt;if(weather.t<=0){const prev=weather.type;weather.type=weatherFor(seasonIdx(time));weather.t=18+Math.random()*18;if(weather.type!==prev&&started&&weather.type!=='clear')toast(`${WEATHER[weather.type].i} ${WEATHER[weather.type].n} sets in across Aurca`);}}
 
 // ===================================================== ERA DATA (1700s)
 const IDEO={
@@ -490,12 +496,12 @@ const ideoOf=n=>IDEO[S[n].ideoKey];
 function newNationState(n){return{elim:false,ideoKey:NATIONS[n].ideo,pp:45,rp:0,mp:60,civ:0,mil:0,
   tech:{musket:0,gunnery:0,horse:0,industry:0,doctrine:0},research:["musket","industry"],resProg:{},
   conQ:[],milQ:[],foc:{},focus:null,focProg:0,focDone:new Set(),wonders:new Set(),wonder:null,wonderProg:0,
-  cb:new Set(),justify:null,war:new Set(),ally:new Set(),rel:{},gens:[],
+  cb:new Set(),justify:null,war:new Set(),ally:new Set(),access:new Set(),guarantee:new Set(),pacts:new Set(),rel:{},gens:[],
   overlord:null,puppets:new Set(),startProv:8,stab:55,unrest:0,support:0,supporter:0,aggression:0,
   infl:30,cabinet:new Set(),ecoLaw:'peace',consLaw:'limited',warEffic:1,resBal:{saltpetre:0,iron:0,horses:0,timber:0},
   leader:randLeader(),leadCD:0,electT:0,cands:null,
   des:{custom:{land:{name:"New Model Regiment",fpw:0,arm:0,tuf:0,drl:0,mob:0},ship:{name:"Grand Frigate",gun:0,hul:0,sai:0,crw:0}},uniform:NATIONS[n].col},
-  aiT:0,aiClock:0,aiDip:0,aiFoc:0,event:0,chainQ:[]};}
+  aiT:0,aiClock:0,aiDip:0,aiFoc:0,event:0,chainQ:[],loreChain:false};}
 const LEAD_NAMES=["Aldous","Berta","Caspian","Dorothea","Ferran","Greta","Halden","Ingrid","Joren","Klara","Lucan","Mireille","Osric","Petra","Rosalind","Theron","Ulrika","Wendel"];
 const LEAD_TRAITS=[
   {id:"general",nm:"The Old Soldier",d:"+12% attack",atk:.12},
@@ -575,7 +581,7 @@ function encircled(a){return a.supply<0.3;}
 
 // ===================================================== PATH / SUPPLY
 const isSea=k=>!H[k].land;
-function passableFor(k,nation){const h=H[k];if(!h)return false;if(isSea(k))return true;if(h.owner===0||h.owner===nation)return true;return S[nation].war.has(h.owner);}
+function passableFor(k,nation){const h=H[k];if(!h)return false;if(isSea(k))return true;if(h.owner===0||h.owner===nation)return true;if(S[h.owner]&&S[h.owner].access&&S[h.owner].access.has(nation)&&!S[nation].war.has(h.owner))return true;return S[nation].war.has(h.owner);}
 function findPath(start,goal,nation){if(start===goal)return[];if(!H[goal]||!passableFor(goal,nation))return null;
   const dist={[start]:0},prev={[start]:null},pq=[[0,start]];
   while(pq.length){let bi=0;for(let i=1;i<pq.length;i++)if(pq[i][0]<pq[bi][0])bi=i;const[d,cur]=pq.splice(bi,1)[0];if(cur===goal)break;if(d>dist[cur])continue;const[c,r]=cur.split(',').map(Number);
@@ -585,7 +591,7 @@ const armyAt=k=>armies.find(a=>a.key===k);
 function nearestNeutral(start,nation){const seen={[start]:1},q=[start];let g=0;while(q.length&&g<400){const cur=q.shift();g++;const[c,r]=cur.split(',').map(Number);for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(nk in seen)continue;if(!passableFor(nk,nation))continue;seen[nk]=1;if(H[nk].land&&H[nk].owner===0)return nk;q.push(nk);}}return null;}
 function supplyOf(army){const n=army.nation,start=army.key;if(H[start]&&H[start].land&&H[start].owner===n)return 1;
   const seen={[start]:0},q=[start];while(q.length){const cur=q.shift();const d=seen[cur];if(d>14)continue;const[c,r]=cur.split(',').map(Number);
-    for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(nk in seen)continue;if(!passableFor(nk,n))continue;seen[nk]=d+1;if(H[nk].land&&H[nk].owner===n)return Math.max(0.25,Math.min(1,1-((d+1)-3)/8));q.push(nk);}}
+    for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(nk in seen)continue;if(!passableFor(nk,n))continue;seen[nk]=d+1;if(H[nk].land&&H[nk].owner===n){const free=(H[nk].depot||H[nk].port)?7:3;return Math.max(0.25,Math.min(1,1-((d+1)-free)/8));}q.push(nk);}}
   return 0.25;}
 
 // ===================================================== SIM
@@ -594,6 +600,7 @@ function econ(n,dt){const s=S[n],id=ideoOf(n),pv=provs(n);const indMul=1+0.08*s.
   const eco=ECO_LAWS[s.ecoLaw]||ECO_LAWS.peace,cons=CONS_LAWS[s.consLaw]||CONS_LAWS.limited;
   s.infl=Math.min(250,s.infl+(0.12+(hasAdv(n,'diplomat')?0.02:0))*dt);
   for(const q of s.puppets)if(alive(q)){s.pp+=provs(q)*0.25*dt;s.mp+=provs(q)*0.3*dt;}
+  for(const p of s.pacts)if(alive(p)&&!s.war.has(p)){s.pp+=0.6*dt;s.rp+=0.35*dt;}
   let cities=0,devp=0,occ=0;const prod={saltpetre:0,iron:0,horses:0,timber:0};
   for(const k in H){const h=H[k];if(!h.land||h.owner!==n)continue;if(h.city)cities++;if(h.dev)devp+=h.dev;const occu=h.core>0&&h.core!==n;if(occu)occ++;if(h.res)prod[h.res]+=occu?0.5:1;}
   const need={saltpetre:0,iron:0,horses:0,timber:0};for(const a of armies){if(a.nation!==n)continue;for(const u of UKEYS){const c=a.units[u];if(!c||!UNIT_RES[u])continue;for(const r in UNIT_RES[u])need[r]+=c*UNIT_RES[u][r];}}
@@ -617,10 +624,12 @@ function econ(n,dt){const s=S[n],id=ideoOf(n),pv=provs(n);const indMul=1+0.08*s.
   // justify war
   if(s.justify){s.justify.prog+=dt;if(s.justify.prog>=s.justify.need){s.cb.add(s.justify.t);if(n===PLAYER)toast(`War justified against ${NATIONS[s.justify.t].name}`);s.justify=null;}}
 }
-function finishCon(n,it){if(it.kind==="civ")S[n].civ++;else if(it.kind==="mil")S[n].mil++;else if(it.kind==="fort"&&H[it.hex]&&H[it.hex].owner===n)H[it.hex].fort=Math.min(5,H[it.hex].fort+1);if(n===PLAYER)toast(`Built ${it.kind==="fort"?"Fortress":it.kind==="civ"?"Manufactory":"Arsenal"}`);}
+function finishCon(n,it){if(it.kind==="civ")S[n].civ++;else if(it.kind==="mil")S[n].mil++;else if(it.kind==="fort"&&H[it.hex]&&H[it.hex].owner===n)H[it.hex].fort=Math.min(5,H[it.hex].fort+1);else if(it.kind==="depot"&&H[it.hex]&&H[it.hex].owner===n)H[it.hex].depot=true;else if(it.kind==="port"&&H[it.hex]&&H[it.hex].owner===n)H[it.hex].port=true;if(n===PLAYER)toast(`Built ${it.kind==="fort"?"Fortress":it.kind==="civ"?"Manufactory":it.kind==="depot"?"Supply Depot":it.kind==="port"?"Naval Port":"Arsenal"}`);}
 function deployUnit(n,type){const cap=capitals[n];let a=armies.find(x=>x.nation===n&&x.key===cap&&battalions(x)<24);if(!a){a=newArmy(n,cap,{});armies.push(a);}a.units[type]++;a.hp=maxHp(a);a.org=Math.min(maxOrg(a),a.org+unitStat(n,type,'org'));if(n===PLAYER)toast(`${unitName(n,type)} mustered`);}
 
 function step(dt){
+  updateWeather(dt);
+  for(let i=REPAR.length-1;i>=0;i--){const r=REPAR[i];if(!alive(r.from)||!alive(r.to)){REPAR.splice(i,1);continue;}const pay=Math.min(S[r.from].pp,r.perDay*dt);S[r.from].pp-=pay;S[r.to].pp+=pay;r.days-=dt;if(r.days<=0){REPAR.splice(i,1);if(r.to===PLAYER)toast(`💰 War indemnity from ${NATIONS[r.from].name} has been paid in full.`);}}
   for(const n of NIDS)S[n].blockaded=false;
   for(const a of armies){if(roleCount(a,'navy')<1||!isSea(a.key))continue;const[c,r]=a.key.split(',').map(Number);for(const[nc,nr]of neighborsCR(c,r)){const o=H[key(nc,nr)];if(o&&o.land&&o.owner&&o.owner!==a.nation&&S[a.nation].war.has(o.owner))S[o.owner].blockaded=true;}}
   for(const n of NIDS)if(alive(n))econ(n,dt);
@@ -630,20 +639,21 @@ function step(dt){
   for(const a of armies){if(a.path.length===0)continue;const next=a.path[0];const occ=armyAt(next);
     if(occ&&occ.nation!==a.nation&&S[a.nation].war.has(occ.nation))continue;
     if(occ&&occ.nation!==a.nation&&!S[a.nation].war.has(occ.nation)){a.path=[];continue;}
-    const hasShips=roleCount(a,'navy')>0;const seaM=isSea(next)?((S[a.nation].foc.naval||hasShips)?SEA_MULT*0.5:SEA_MULT):1;let tmul=isSea(next)?seaM:(TERR[H[next].terr]?TERR[H[next].terr].mv:1);if(seasonIdx(time)===0&&!isSea(next))tmul*=1.4;const stepDays=MOVE_DAYS/speedOf(a)*tmul;a.prog+=dt/stepDays;
+    const hasShips=roleCount(a,'navy')>0;const seaM=isSea(next)?((S[a.nation].foc.naval||hasShips)?SEA_MULT*0.5:SEA_MULT):1;let tmul=isSea(next)?seaM:(TERR[H[next].terr]?TERR[H[next].terr].mv:1);if(seasonIdx(time)===0&&!isSea(next))tmul*=1.4;tmul*=WEATHER[weather.type].mv;const stepDays=MOVE_DAYS/speedOf(a)*tmul;a.prog+=dt/stepDays;
     if(a.prog>=1){a.prog=0;const tgt=a.path.shift();const there=armyAt(tgt);if(there&&there.nation===a.nation){mergeArmies(there,a);a.dead=true;a.path=[];}else{a.key=tgt;a.entrench=0;if(H[tgt].land&&H[tgt].owner!==a.nation&&(H[tgt].owner===0||S[a.nation].war.has(H[tgt].owner)))capture(tgt,a.nation);}}}
   armies=armies.filter(a=>!a.dead);
   for(const a of armies)a.inCombat=false;
   const engaged=[];
   for(const a of armies){if(a.path.length===0)continue;const d=armyAt(a.path[0]);if(d&&d.nation!==a.nation&&S[a.nation].war.has(d.nation))engaged.push([a,d]);}
   for(const[a,d]of engaged){a.inCombat=true;d.inCombat=true;const atkHex=H[a.key],dHex=H[a.path[0]];
-    const uphill=Math.max(0,(dHex?dHex.elev:0)-(atkHex?atkHex.elev:0));const atkMul=1-0.06*uphill-(isSea(a.key)?0.25:0);
+    const uphill=Math.max(0,(dHex?dHex.elev:0)-(atkHex?atkHex.elev:0));const amph=isSea(a.key)?(roleCount(a,'navy')>0?0.1:0.32):0;const atkMul=1-0.06*uphill-amph; // escorted amphibious landings fare far better than unsupported ones
     const w=frontage(dHex),aw=widthEff(battalions(a),w),dw=widthEff(battalions(d),w); // combat width: terrain caps how many fight, rest are reserves
     const aAtk=attackOf(a)*Math.max(0.3,atkMul)*aw,dDef=defenseOf(d,dHex)*dw,dAtk=attackOf(d)*dw,aDef=defenseOf(a,atkHex)*aw;
     let dmgD=aAtk/(1+0.03*dDef)*COMBAT_K*dt,dmgA=dAtk/(1+0.03*aDef)*COMBAT_K*dt;
     if(encircled(a))dmgA*=1.5;if(encircled(d))dmgD*=1.5; // cut-off armies are mauled
     const aAir=roleCount(a,'air')+(S[a.nation].foc.air?1:0),dAir=roleCount(d,'air')+(S[d.nation].foc.air?1:0); // air superiority — close support
     if(aAir>dAir){dmgD*=1.13;dmgA*=0.9;}else if(dAir>aAir){dmgA*=1.13;dmgD*=0.9;}
+    const wcb=WEATHER[weather.type].cb;dmgD*=wcb;dmgA*=wcb; // foul weather dampens powder and bogs down assaults
     applyDmg(d,dmgD);applyDmg(a,dmgA);
     if(!d._rep&&d.hp<=maxHp(d)*0.04){d._rep=1;battleReport(a.nation,d.nation,a.path[0]);}
     if(!a._rep&&a.hp<=maxHp(a)*0.04){a._rep=1;battleReport(d.nation,a.nation,a.key);}
@@ -681,7 +691,7 @@ function mergeArmies(dst,src){for(const u of UKEYS)dst.units[u]+=src.units[u];ds
 function retreat(a){const n=a.nation,[c,r]=a.key.split(',').map(Number);let best=null;for(const[nc,nr]of neighborsCR(c,r)){const nk=key(nc,nr);if(!H[nk].land)continue;if(H[nk].owner===n&&!armies.some(x=>x.key===nk&&x.nation!==n)){best=nk;break;}}if(best){a.key=best;a.org=maxOrg(a)*0.2;a.path=[];a.entrench=0;}else a.dead=true;}
 function capture(k,nation){const h=H[k];if(h.owner===nation)return;const prev=h.owner;h.owner=nation;h.fort=Math.max(0,h.fort-1);if(prev>0&&S[prev])S[prev].stab=Math.max(0,S[prev].stab-0.7);}
 function conquerorOf(n){const ck=capitals[n];if(ck&&H[ck].owner!==n&&H[ck].owner!==0)return H[ck].owner;let best=0,bv=-1;for(const e of NIDS){if(e===n||!alive(e)||!S[n].war.has(e))continue;const v=provs(e);if(v>bv){bv=v;best=e;}}return best;}
-function eliminate(n,conq){if(S[n].elim)return;S[n].elim=true;if(conq&&S[conq])S[conq].aggression+=2;for(const k in H){const h=H[k];if(h.owner===n)h.owner=conq||0;}for(const a of armies){if(a.nation===n){if(conq)a.nation=conq;else a.dead=true;}}armies=armies.filter(a=>!a.dead);freePuppet(n);for(const q of [...S[n].puppets])freePuppet(q);for(const m of NIDS){S[m].war.delete(n);S[m].ally.delete(n);S[m].cb.delete(n);S[m].puppets.delete(n);}chron(`🏴 ${NATIONS[n].name} capitulated${conq?` to ${NATIONS[conq].name}`:''}.`);if(conq&&conq===PLAYER)toast(`${NATIONS[n].name} has been conquered!`);else if(n===PLAYER)toast(`${NATIONS[n].name} has fallen.`);}
+function eliminate(n,conq){if(S[n].elim)return;S[n].elim=true;if(conq&&S[conq])S[conq].aggression+=2;for(const k in H){const h=H[k];if(h.owner===n)h.owner=conq||0;}for(const a of armies){if(a.nation===n){if(conq)a.nation=conq;else a.dead=true;}}armies=armies.filter(a=>!a.dead);freePuppet(n);for(const q of [...S[n].puppets])freePuppet(q);for(const m of NIDS){S[m].war.delete(n);S[m].ally.delete(n);S[m].cb.delete(n);S[m].puppets.delete(n);S[m].pacts.delete(n);S[m].access.delete(n);S[m].guarantee.delete(n);}chron(`🏴 ${NATIONS[n].name} capitulated${conq?` to ${NATIONS[conq].name}`:''}.`);if(conq&&conq===PLAYER)toast(`${NATIONS[n].name} has been conquered!`);else if(n===PLAYER)toast(`${NATIONS[n].name} has fallen.`);}
 function blocProvs(n){let p=provs(n);for(const q of S[n].puppets)if(alive(q))p+=provs(q);return p;}
 function checkWin(){if(gameOver)return;
   const totalLand=Object.values(H).filter(h=>h.land).length;
@@ -695,8 +705,9 @@ function aiTurn(n,dt){const s=S[n];
   if(s.infl>=55&&s.cabinet.size<3){const av=ADVISORS.find(a=>!s.cabinet.has(a.id));if(av){s.infl-=av.cost;s.cabinet.add(av.id);}}
   if(s.war.size&&s.infl>=40&&s.ecoLaw==='peace'){s.infl-=40;s.ecoLaw='war';}
   if(s.war.size&&s.mp<25&&s.infl>=40&&s.consLaw!=='extensive'&&s.consLaw!=='total'){s.infl-=40;s.consLaw='extensive';}
-  if(s.conQ.length<2){const pv=provs(n);if(s.civ<pv/3&&s.pp>30)s.conQ.push({kind:"civ",cost:60,prog:0});else if(s.mil<Math.max(2,pv/5))s.conQ.push({kind:"mil",cost:80,prog:0});else if(H[capitals[n]]&&H[capitals[n]].fort<4)s.conQ.push({kind:"fort",hex:capitals[n],cost:45,prog:0});}
+  if(s.conQ.length<2){const pv=provs(n);if(s.civ<pv/3&&s.pp>30)s.conQ.push({kind:"civ",cost:60,prog:0});else if(s.mil<Math.max(2,pv/5))s.conQ.push({kind:"mil",cost:80,prog:0});else if(H[capitals[n]]&&H[capitals[n]].fort<4)s.conQ.push({kind:"fort",hex:capitals[n],cost:45,prog:0});else if(s.war.size&&pv>6&&Math.random()<0.1){const fronts=Object.values(H).filter(h=>h.land&&h.owner===n&&!h.depot&&!h.cap&&neighborsCR(h.col,h.row).some(([c,r])=>{const o=H[key(c,r)];return o&&o.land&&o.owner&&o.owner!==n;})&&!neighborsCR(h.col,h.row).some(([c,r])=>{const o=H[key(c,r)];return o&&o.depot;}));if(fronts.length){const f=fronts[Math.floor(Math.random()*fronts.length)];s.conQ.push({kind:"depot",hex:key(f.col,f.row),cost:65,prog:0});}}}
   if(!s.wonder&&s.wonders.size<3&&s.civ>=4&&s.pp>140&&Math.random()<0.4){const av=WONDERS.filter(w=>!s.wonders.has(w.id));if(av.length)s.wonder=av[Math.floor(Math.random()*av.length)].id;}
+  if(s.conQ.length<2&&H[capitals[n]]&&!H[capitals[n]].port&&isCoastal(H[capitals[n]])&&(n===1||s.foc.naval)&&s.pp>90&&Math.random()<0.15)s.conQ.push({kind:"port",hex:capitals[n],cost:70,prog:0});
   if(s.milQ.length<3&&s.mp>30){const r=Math.random();let type;
     if(n===1)type=r<0.4?"ship":r<0.62?"line":r<0.82?"gren":(unitUnlocked(n,"liner")?"liner":"horse"); // Pirati: corsair fleet
     else{const pool=["line","gren","cannon","horse","ship"];if(unitUnlocked(n,"guard"))pool.push("guard");if(unitUnlocked(n,"liner"))pool.push("liner");if(unitUnlocked(n,"air"))pool.push("air");type=pool[Math.floor(r*pool.length)];}
@@ -712,7 +723,12 @@ function aiTurn(n,dt){const s=S[n];
     const my=provs(n)+armies.filter(a=>a.nation===n).reduce((x,a)=>x+battalions(a),0);if(target&&my>tv*0.55&&s.stab>30)declareWar(n,target,true);}
     else{for(const e of[...s.war]){if(e!==PLAYER&&provs(e)>0&&provs(e)<=Math.max(1,S[e].startProv*0.35)&&Math.random()<0.25){makePuppet(n,e);continue;}if((provs(n)<provs(e)*0.3||s.stab<18)&&Math.random()<0.35)makePeace(n,e,true);}}
     // anti-hegemon: gang up on whoever is winning, and on Carak
-    if(n!==2&&s.war.has(2)&&Math.random()<0.3){for(const e of NIDS)if(e!==n&&e!==2&&alive(e)&&S[e].war.has(2)&&!s.ally.has(e)){makeAlliance(n,e);break;}}}
+    if(n!==2&&s.war.has(2)&&Math.random()<0.3){for(const e of NIDS)if(e!==n&&e!==2&&alive(e)&&S[e].war.has(2)&&!s.ally.has(e)){makeAlliance(n,e);break;}}
+    // peacetime diplomacy: trade pacts with friends, guarantees for weaker friends
+    if(s.war.size===0&&Math.random()<0.3){const friends=NIDS.filter(e=>e!==n&&alive(e)&&!s.war.has(e)&&!s.puppets.has(e)&&S[e].overlord!==n&&(s.rel[e]||0)>=10);
+      if(friends.length){const f=friends[Math.floor(Math.random()*friends.length)];
+        if(!s.pacts.has(f)&&Math.random()<0.6){s.pacts.add(f);S[f].pacts.add(n);s.rel[f]=(s.rel[f]||0)+8;S[f].rel[n]=(S[f].rel[n]||0)+8;if(f===PLAYER)toast(`🤝 ${NATIONS[n].name} proposes — and signs — a trade pact with you`);}
+        else if(!s.guarantee.has(f)&&provs(f)<=provs(n)&&Math.random()<0.45){s.guarantee.add(f);}}}}
   if(s.war.size){let t=0,tv=1e9;for(const e of s.war)if(alive(e)){const v=provs(e);if(v<tv){tv=v;t=e;}}s.aiTarget=t;}else s.aiTarget=0; // concentrate on the weakest enemy
   s.aiClock+=dt;if(s.aiClock>1.2){s.aiClock=0;const mine=armies.filter(a=>a.nation===n);let defended=false;
     for(const a of mine){if(a.path.length>0||a.inCombat||a.org<maxOrg(a)*0.3)continue;
@@ -726,9 +742,10 @@ function aiTurn(n,dt){const s=S[n];
       if(a.genId==null){const g=s.gens.find(g=>g.armyId==null);if(g){g.armyId=a.id;a.genId=g.id;}}}}
 }
 function borders(){return true;} // naval world — every shore is reachable by sea
-function declareWar(a,b,silent,noCall){if(S[a].war.has(b))return;S[a].war.add(b);S[b].war.add(a);S[a].ally.delete(b);S[b].ally.delete(a);S[a].rel[b]=-100;S[b].rel[a]=-100;S[a].aggression+=0.8;chron(`⚔ ${NATIONS[a].name} declared war on ${NATIONS[b].name}.`);
+function declareWar(a,b,silent,noCall){if(S[a].war.has(b))return;S[a].war.add(b);S[b].war.add(a);S[a].ally.delete(b);S[b].ally.delete(a);S[a].pacts.delete(b);S[b].pacts.delete(a);S[a].access.delete(b);S[b].access.delete(a);S[a].rel[b]=-100;S[b].rel[a]=-100;S[a].aggression+=0.8;chron(`⚔ ${NATIONS[a].name} declared war on ${NATIONS[b].name}.`);
   if(!noCall){for(const al of [...S[a].ally]){if(al!==b&&al!==PLAYER&&alive(al)&&!S[al].war.has(b)){declareWar(al,b,true,true);if(a===PLAYER||al===PLAYER||b===PLAYER)toast(`${NATIONS[al].name} joins ${NATIONS[a].name} against ${NATIONS[b].name}`);}}
-    for(const al of [...S[b].ally]){if(al!==a&&al!==PLAYER&&alive(al)&&!S[al].war.has(a)){declareWar(al,a,true,true);if(a===PLAYER||al===PLAYER||b===PLAYER)toast(`${NATIONS[al].name} joins ${NATIONS[b].name} against ${NATIONS[a].name}`);}}}
+    for(const al of [...S[b].ally]){if(al!==a&&al!==PLAYER&&alive(al)&&!S[al].war.has(a)){declareWar(al,a,true,true);if(a===PLAYER||al===PLAYER||b===PLAYER)toast(`${NATIONS[al].name} joins ${NATIONS[b].name} against ${NATIONS[a].name}`);}}
+    for(const G of NIDS){if(G!==a&&G!==b&&alive(G)&&S[G].guarantee.has(b)&&!S[G].war.has(a)){declareWar(G,a,true,true);if(G===PLAYER)toast(`🛡 Your guarantee of ${NATIONS[b].name} pulls you into war with ${NATIONS[a].name}!`);else if(a===PLAYER||b===PLAYER)toast(`🛡 ${NATIONS[G].name} honours its guarantee of ${NATIONS[b].name} — war on ${NATIONS[a].name}`);}}}
   if(!silent||a===PLAYER||b===PLAYER)toast(`⚔️ ${NATIONS[a].name} declares war on ${NATIONS[b].name}`);}
 function makePeace(a,b,silent){if(!S[a].war.has(b))return;S[a].war.delete(b);S[b].war.delete(a);S[a].rel[b]=Math.max(S[a].rel[b],-20);S[b].rel[a]=S[a].rel[b];if(!silent||a===PLAYER||b===PLAYER)toast(`🕊️ ${NATIONS[a].name} & ${NATIONS[b].name} make peace`);}
 function makeAlliance(a,b){if(S[a].war.has(b))return false;S[a].ally.add(b);S[b].ally.add(a);S[a].rel[b]=60;S[b].rel[a]=60;return true;}
@@ -778,6 +795,8 @@ function draw(){
     if(h.cap){drawFlag(bx,by-lift-2,h.owner);}
     if(h.city){const cyy=by-lift;if(!h.cap){ctx.fillStyle="#f3eedd";ctx.beginPath();ctx.arc(bx,cyy,3,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#15110b";ctx.lineWidth=1;ctx.stroke();}
       ctx.font="700 8px Georgia,serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.lineWidth=2.4;ctx.strokeStyle="rgba(8,6,3,.85)";ctx.strokeText(h.name,bx,cyy+(h.cap?7:5));ctx.fillStyle="#efe7d6";ctx.fillText(h.name,bx,cyy+(h.cap?7:5));}
+    if(h.depot){ctx.font="bold 10px Georgia,serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineWidth=2.2;ctx.strokeStyle="rgba(8,6,3,.85)";ctx.strokeText("▣",bx-8,by-lift-1);ctx.fillStyle="#9fe6b0";ctx.fillText("▣",bx-8,by-lift-1);}
+    if(h.port){ctx.font="bold 10px Georgia,serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineWidth=2.2;ctx.strokeStyle="rgba(8,6,3,.85)";ctx.strokeText("⚓",bx+8,by-lift-1);ctx.fillStyle="#7fc6ff";ctx.fillText("⚓",bx+8,by-lift-1);}
   }
   // trade routes between each nation's cities (nearest-neighbour links)
   for(const n of NIDS){if(!alive(n))continue;const cs=cityHexes.filter(k=>H[k].owner===n);if(cs.length<2)continue;ctx.strokeStyle="rgba(216,175,78,.30)";ctx.lineWidth=1.5;ctx.setLineDash([3,4]);for(const k of cs){const[ac,ar]=k.split(',').map(Number);let best=null,bd=1e9;for(const k2 of cs){if(k2===k)continue;const[bc,br]=k2.split(',').map(Number);const dd=(ac-bc)**2+(ar-br)**2;if(dd<bd){bd=dd;best=k2;}}if(best){const[x1,y1]=centerRaised(k),[x2,y2]=centerRaised(best);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}}ctx.setLineDash([]);}
@@ -821,7 +840,7 @@ function toast(m){const t=document.getElementById('toast');const d=document.crea
 function fmtDate(days){const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];const total=Math.floor(days);const y=1700+Math.floor(total/365);const doy=total%365;const m=Math.min(11,Math.floor(doy/30.42));const day=Math.min(31,Math.floor(doy-m*30.42)+1);return `${day} ${months[m]} ${y}`;}
 function flagHTML(n){return `<span class="flag" style="background:linear-gradient(${NATIONS[n].col} 0 50%, ${NATIONS[n].col2} 50% 100%)"></span>`;}
 function bar(f,c){return `<div class="bar"><i style="width:${Math.max(0,Math.min(100,f*100))}%;background:${c}"></i></div>`;}
-function updateTop(){document.getElementById('date').textContent=fmtDate(time);const se=SEASONS[seasonIdx(time)];document.getElementById('season').textContent=se.i+' '+se.n;if(!PLAYER){document.getElementById('resbar').innerHTML='';return;}const s=S[PLAYER];
+function updateTop(){document.getElementById('date').textContent=fmtDate(time);const se=SEASONS[seasonIdx(time)];document.getElementById('season').textContent=se.i+' '+se.n+' '+WEATHER[weather.type].i;document.getElementById('season').title=`${se.n} · ${WEATHER[weather.type].n}`;if(!PLAYER){document.getElementById('resbar').innerHTML='';return;}const s=S[PLAYER];
   document.getElementById('brandsub').textContent=NATIONS[PLAYER].name+" · "+ideoOf(PLAYER).t;
   document.getElementById('resbar').innerHTML=`<div class="r" title="Gold">🪙<b>${Math.floor(s.pp)}</b></div><div class="r" title="Knowledge">📜<b>${Math.floor(s.rp)}</b></div><div class="r" title="Recruits">🎖️<b>${Math.floor(s.mp)}</b></div><div class="r" title="Political Power">🏛️<b>${Math.floor(s.infl)}</b></div><div class="r" title="Manufactories">🏭<b>${s.civ}</b></div><div class="r" title="Arsenals">⚒️<b>${s.mil}</b></div>`;}
 function renderTab(){if(!PLAYER){document.getElementById('tabcontent').innerHTML='';return;}const s=S[PLAYER],c=document.getElementById('tabcontent');let h='';
@@ -837,7 +856,8 @@ function renderTab(){if(!PLAYER){document.getElementById('tabcontent').innerHTML
     RESOURCES.forEach(r=>{const bal=Math.round(s.resBal[r]||0);h+=`<div class="kv"><span>${RES_ICON[r]} ${RES_NAME[r]}</span><b style="color:${bal>=0?'#9fe6b0':'#ff9aa7'}">${bal>=0?'+':''}${bal}</b></div>`;});
     h+=`<div class="small">${s.warEffic<0.99?`⚠ Shortages cut army effectiveness to ${Math.round(s.warEffic*100)}% — capture resource land or trim your forces.`:'Your armies are well supplied.'}</div></div>`;
     h+=`<h4 class="sec">Construction</h4>`;
-    h+=`<button class="btn" data-act="con" data-kind="civ"><span>🏭 Manufactory</span><span class="cost">+income · 60</span></button><button class="btn" data-act="con" data-kind="mil"><span>⚒️ Arsenal</span><span class="cost">+muster · 80</span></button><button class="btn" data-act="con" data-kind="fort" ${selected&&selected.nation===PLAYER&&H[selected.key].owner===PLAYER?'':'disabled'}><span>🛡️ Fortress ${selected?'(here)':'(pick army)'}</span><span class="cost">+defence · 45</span></button>`;
+    const onMine=selected&&selected.nation===PLAYER&&H[selected.key].owner===PLAYER;
+    h+=`<button class="btn" data-act="con" data-kind="civ"><span>🏭 Manufactory</span><span class="cost">+income · 60</span></button><button class="btn" data-act="con" data-kind="mil"><span>⚒️ Arsenal</span><span class="cost">+muster · 80</span></button><button class="btn" data-act="con" data-kind="fort" ${onMine?'':'disabled'}><span>🛡️ Fortress ${selected?'(here)':'(pick army)'}</span><span class="cost">+defence · 45</span></button><button class="btn" data-act="con" data-kind="depot" ${onMine?'':'disabled'}><span>📦 Supply Depot ${selected?(H[selected.key]&&H[selected.key].depot?'(built)':'(here)'):'(pick army)'}</span><span class="cost">+range · 65</span></button>${(onMine&&isCoastal(H[selected.key]))?`<button class="btn" data-act="con" data-kind="port"><span>⚓ Naval Port ${H[selected.key].port?'(built)':'(here)'}</span><span class="cost">+fleet supply · 70</span></button>`:''}`;
     if(s.conQ.length){const cr=Math.max(0.01,(CONSTRUCT_BASE+0.5*s.civ)*(1+0.08*s.tech.industry+ideoOf(PLAYER).con+(s.foc.prod?0.1:0)+leaderB(PLAYER,'con')));h+=`<div class="small" style="margin-top:6px">Works underway:</div>`;s.conQ.forEach(it=>{const eta=Math.ceil((it.cost-it.prog)/cr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span>${it.kind==="civ"?"Manufactory":it.kind==="mil"?"Arsenal":"Fortress"}</span><span class="small">~${eta}d</span></div>${bar(it.prog/it.cost,"#d8af4e")}</div>`;});}
     h+=`<h4 class="sec">Muster Regiments — ${Math.floor(s.mp)} recruits</h4>`;
     for(const t of UKEYS){const u=UNIT[t],lock=!unitUnlocked(PLAYER,t),mp=unitStat(PLAYER,t,'mp');h+=`<button class="btn" data-act="recruit" data-type="${t}" ${(!lock&&s.mp>=mp)?'':'disabled'}><span>${unitName(PLAYER,t)}${u.custom?' ✦':''}${lock?' 🔒':''}</span><span class="cost">${lock?`needs ${TECHS[u.req.tech].name} ${u.req.lvl}`:`${Math.round(mp)} rec · atk ${Math.round(unitStat(PLAYER,t,'atk'))} def ${Math.round(unitStat(PLAYER,t,'def'))}`}</span></button>`;}
@@ -846,7 +866,7 @@ function renderTab(){if(!PLAYER){document.getElementById('tabcontent').innerHTML
     if(s.wonder){const w=WONDERS.find(x=>x.id===s.wonder),wr=Math.max(0.01,(CONSTRUCT_BASE+0.45*s.civ)*(1+0.08*s.tech.industry+ideoOf(PLAYER).con+leaderB(PLAYER,'con'))),eta=Math.ceil((w.cost-s.wonderProg)/wr);h+=`<div class="qitem"><div style="display:flex;justify-content:space-between"><span><b style="color:#d8af4e">${w.name}</b></span><span class="small">~${eta}d</span></div><div class="small">${w.d}</div>${bar(s.wonderProg/w.cost,"#d8af4e")}</div>`;}
     else{const avail=WONDERS.filter(w=>!s.wonders.has(w.id));if(!avail.length)h+=`<div class="small">Every great work is complete — your nation is the envy of Aurca.</div>`;avail.forEach(w=>{h+=`<button class="btn" data-act="wonder" data-id="${w.id}"><span>🏛 ${w.name}</span><span class="cost">${w.cost}</span></button><div class="small" style="margin:-4px 0 7px;opacity:.85">${w.d}</div>`;});}
     if(s.wonders.size)h+=`<div class="small" style="margin-top:4px">Completed: ${[...s.wonders].map(id=>WONDERS.find(w=>w.id===id).name).join(', ')}</div>`;}
-  else if(TAB==="research"){h+=`<h4 class="sec">Sciences (2 slots · ${Math.floor(s.rp)} knowledge)</h4>`;
+  else if(TAB==="research"){h+=`<button class="btn gold" data-act="opentech" style="margin-bottom:6px"><span>🔬 Open Tech Tree</span><span class="cost">eras &amp; unlocks</span></button><h4 class="sec">Sciences (2 slots · ${Math.floor(s.rp)} knowledge)</h4>`;
     for(const cat in TECHS){const T=TECHS[cat],lvl=s.tech[cat],active=s.research.includes(cat),done=lvl>=T.max,need=40+lvl*28,prog=done?1:(s.resProg[cat]||0)/need;
       h+=`<div class="card"><div class="kv"><span><b style="color:${active?'#d8af4e':'#efe7d6'}">${T.name}</b> · ${lvl}/${T.max}</span>${done?'<span class="pill" style="background:#1f4a2a;color:#9fe6b0">MAX</span>':active?'<span class="pill" style="background:#3a3417;color:#d8af4e">STUDYING</span>':`<button class="btn" style="width:auto;padding:3px 8px;margin:0" data-act="research" data-cat="${cat}">Study</button>`}</div><div class="small">${T.desc}</div>${done?'':bar(prog,"#7fc6ff")}</div>`;}}
   else if(TAB==="politics"){const id=ideoOf(PLAYER);h+=`<h4 class="sec">Government</h4><div class="card"><div class="kv"><span>${id.t}</span><b>${isDemoc(PLAYER)?'Elected':'Appointed'}</b></div><div class="small">atk +${Math.round(id.atk*100)}% · def +${Math.round(id.def*100)}% · prod +${Math.round(id.prod*100)}% · know +${Math.round(id.res*100)}% · recruits +${Math.round(id.mp*100)}%</div></div>`;
@@ -874,12 +894,17 @@ function renderTab(){if(!PLAYER){document.getElementById('tabcontent').innerHTML
       const status=myVassal?'<span style="color:#d8af4e">Your vassal</span>':myLord?'<span style="color:#ff9aa7">Your overlord</span>':war?'<span style="color:#ff9aa7">At war</span>':ally?'<span style="color:#9fe6b0">Allied</span>':cb?'<span style="color:#d8af4e">Casus belli</span>':'Peace';
       h+=`<div class="card"><div class="kv"><span>${flagHTML(n)} <b>${NATIONS[n].name}</b></span><b style="color:${rel>=0?'#9fe6b0':'#ff9aa7'}">${rel>0?'+':''}${rel}</b></div><div class="kv"><span>Status</span><b>${status}</b></div>`;
       const rr=relReasons(PLAYER,n);if(rr.length)h+=`<div class="small" style="margin:1px 0 4px">${rr.map(x=>`<span style="color:${x[1]>=0?'#9fe6b0':'#ff9aa7'}">${x[0]} ${x[1]>0?'+':''}${x[1]}</span>`).join(' · ')}</div>`;
+      const tags=[];if(s.pacts.has(n))tags.push('🤝 Trade pact');if(s.access.has(n))tags.push('🚶 You grant access');if(S[n].access.has(PLAYER))tags.push('🚶 They grant access');if(s.guarantee.has(n))tags.push('🛡 You guarantee');if(S[n].guarantee.has(PLAYER))tags.push('🛡 Guaranteed by them');
+      if(tags.length)h+=`<div class="small" style="color:#9fe6b0;margin:1px 0 4px">${tags.join(' · ')}</div>`;
       h+=`<div class="arow">`;
       if(myVassal)h+=`<button class="btn" data-act="release" data-n="${n}">Release vassal</button>`;
       else if(!myLord){
         if(war){h+=`<button class="btn" data-act="peace" data-n="${n}">White peace</button><button class="btn gold" data-act="conf" data-n="${n}">⚖ Peace Conference</button>`;}
         else{if(cb)h+=`<button class="btn" data-act="war" data-n="${n}">Declare war</button>`;else if(just)h+=`<div class="qitem" style="flex:1">Justifying… ${Math.ceil(s.justify.need-s.justify.prog)}d${bar(s.justify.prog/s.justify.need,"#d8af4e")}</div>`;else h+=`<button class="btn" data-act="justify" data-n="${n}" ${s.justify?'disabled':''}>Justify war</button>`;
-          if(!ally&&!cb)h+=`<button class="btn" data-act="ally" data-n="${n}" ${rel>=20?'':'disabled'}>Alliance</button>`;}}
+          if(!ally&&!cb)h+=`<button class="btn" data-act="ally" data-n="${n}" ${rel>=20?'':'disabled'}>Alliance</button>`;
+          h+=`<button class="btn ${s.pacts.has(n)?'gold':''}" data-act="pact" data-n="${n}" ${(s.pacts.has(n)||rel>=0)?'':'disabled'}>${s.pacts.has(n)?'✕ End trade pact':'🤝 Trade pact'}</button>`;
+          h+=`<button class="btn ${s.access.has(n)?'gold':''}" data-act="access" data-n="${n}">${s.access.has(n)?'✕ Revoke access':'🚶 Grant access'}</button>`;
+          h+=`<button class="btn ${s.guarantee.has(n)?'gold':''}" data-act="guarantee" data-n="${n}">${s.guarantee.has(n)?'✕ Drop guarantee':'🛡 Guarantee'}</button>`;}}
       h+=`</div></div>`;}
     const mo=regionOwner('M'),uo=regionOwner('U');let mv='';
     const movRow=(nn,reg,owner)=>{const sup=Math.round(S[nn].support||0);return `<div class="card"><div class="kv"><span>🏴 ${NATIONS[nn].name} uprising <span class="small">vs ${NATIONS[owner].name}</span></span><b style="color:#d8af4e">${sup}%</b></div>${bar(sup/100,"#d8af4e")}<button class="btn" data-act="support" data-reg="${reg}" style="margin-top:5px" ${s.pp<50?'disabled':''}>Fund the uprising (50g)</button></div>`;};
@@ -898,13 +923,16 @@ function renderArmyPanel(){const p=document.getElementById('armyPanel');if(!sele
     ${encircled(a)?`<div class="small" style="color:#ff9aa7;margin:2px 0">⊘ Encircled — cut off from supply, being mauled!</div>`:''}
     <div class="kv"><span>Ground</span><b>${hex?`elev ${hex.elev.toFixed(1)}${hex.fort?` · fort ${hex.fort}`:''}`:'—'}</b></div>
     <div class="arow"><button class="btn" data-act="split">Split</button><button class="btn" data-act="assigngen" ${S[PLAYER].gens.some(x=>x.armyId==null)&&a.genId==null?'':'disabled'}>+General</button></div>`;}
-function renderProvPanel(){const p=document.getElementById('provPanel');if(!selectedProv||selectedProv.owner!==PLAYER||selected){p.classList.remove('show');return;}p.classList.add('show');const h=selectedProv,dc=40+h.dev*25;
+function isCoastal(h){return h&&h.land&&neighborsCR(h.col,h.row).some(([c,r])=>isSea(key(c,r)));}
+function renderProvPanel(){const p=document.getElementById('provPanel');if(!selectedProv||selectedProv.owner!==PLAYER||selected){p.classList.remove('show');return;}p.classList.add('show');const h=selectedProv,dc=40+h.dev*25,coastal=isCoastal(h);
   p.innerHTML=`<h3>${h.name}${h.cap?' ✪':h.city?' ✦':''}</h3>
     <div class="kv"><span>Terrain</span><b>${TERR[h.terr]?TERR[h.terr].nm:'Land'}</b></div>
     <div class="kv"><span>Development</span><b>${h.dev} / 5</b></div>${bar(h.dev/5,"#d8af4e")}
     <div class="kv"><span>Fortification</span><b>${h.fort} / 5</b></div>${bar(h.fort/5,"#7fc6ff")}
-    <div class="small">${h.city?'A city — its workshops and markets enrich the realm.':'Develop this land to raise its output.'}</div>
-    <div class="arow"><button class="btn" data-pact="dev" ${h.dev>=5||S[PLAYER].pp<dc?'disabled':''}>Develop (${dc}g)</button><button class="btn" data-pact="fort" ${h.fort>=5||S[PLAYER].pp<45?'disabled':''}>Fortify (45g)</button></div>`;}
+    <div class="kv"><span>Supply depot</span><b style="color:${h.depot?'#9fe6b0':'#9a9078'}">${h.depot?'✓ Built':'—'}</b></div>
+    ${coastal?`<div class="kv"><span>Naval port ⚓</span><b style="color:${h.port?'#7fc6ff':'#9a9078'}">${h.port?'✓ Built':'—'}</b></div>`:''}
+    <div class="small">${h.depot?'A supply depot here keeps nearby armies in supply over far greater distances.':'Build a depot to extend how far your armies can campaign while staying supplied.'}${coastal?' A port supplies your fleets at sea and serves as a base for amphibious landings.':''}</div>
+    <div class="arow"><button class="btn" data-pact="dev" ${h.dev>=5||S[PLAYER].pp<dc?'disabled':''}>Develop (${dc}g)</button><button class="btn" data-pact="fort" ${h.fort>=5||S[PLAYER].pp<45?'disabled':''}>Fortify (45g)</button>${h.depot?'':`<button class="btn" data-pact="depot" ${S[PLAYER].pp<65?'disabled':''}>📦 Depot (65g)</button>`}${(coastal&&!h.port)?`<button class="btn" data-pact="port" ${S[PLAYER].pp<70?'disabled':''}>⚓ Port (70g)</button>`:''}</div>`;}
 
 // focus tree overlay render
 function renderFocus(){if(!PLAYER)return;const s=S[PLAYER],tree=treeFor(PLAYER).filter(f=>!f.secret||(f.reveal&&f.reveal(PLAYER)));const COLW=176,ROWH=88,inner=document.getElementById('ftreeInner');
@@ -1004,14 +1032,83 @@ const CHAINS={
   colony_return:{t:"📜 The Fleet Returns",d:"After long silence, sails crest the horizon — the expedition has come home laden with the spoils of distant shores.",c:[
     {l:"Found a chartered trading company (+15% gold & knowledge)",e:n=>F(n,'trade')},
     {l:"Distribute the spoils to the realm (+220 gold, +stability)",e:n=>{S[n].pp+=220;F(n,'spirit');}}]},
+  // ===== Unique per-nation storylines (fire once for the matching power) =====
+  p1_start:{t:"🏴‍☠️ The Captains' Council",d:"The privateer captains gather at Pirat's Reach. With no king and no government, the isle must at last decide what kind of nation it will become — if any.",c:[
+    {l:"Crown a Pirate King to unite the captains",e:n=>{},next:"p1_king",delay:24},
+    {l:"Charter a free merchant republic of the sea",e:n=>{},next:"p1_rep",delay:24}]},
+  p1_king:{t:"🏴‍☠️ A King Among Thieves",d:"A crown is hammered from stolen gold. But a king must bind wild men to his banner.",c:[
+    {l:"Bind the captains by blood-oath (+stability, +60 power)",e:n=>{F(n,'spirit');S[n].infl+=60;}},
+    {l:"Buy their loyalty with plunder rights (+160 gold)",e:n=>S[n].pp+=160}]},
+  p1_rep:{t:"🏴‍☠️ The Free Companies' Charter",d:"The captains sign a charter of equals. Trade, not tribute, will be the law of the isle.",c:[
+    {l:"Tax the prize-courts (+15% gold & knowledge)",e:n=>F(n,'trade')},
+    {l:"Lay the keel of a true dockyard (+1 Gunnery, naval)",e:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;F(n,'naval');}}]},
+  p2_start:{t:"👑 The Imperial Question",d:"In Carngard, the king broods on the shattered Osto-Carakian crown. Shall Carak restore the empire by the sword, or master the continent by the purse?",c:[
+    {l:"Restore the Empire by the sword",e:n=>{},next:"p2_sword",delay:26},
+    {l:"Master the continent by coin",e:n=>{},next:"p2_coin",delay:26}]},
+  p2_sword:{t:"👑 The Eagle Rises",d:"The war-banners are unfurled. The successor-states will be brought to heel.",c:[
+    {l:"Mobilise the imperial host (+2 arsenals, +attack)",e:n=>{S[n].mil+=2;F(n,'atk');}},
+    {l:"Forge the iron crown (+stability, +60 power)",e:n=>{F(n,'spirit');S[n].infl+=60;}}]},
+  p2_coin:{t:"👑 The Carrish Exchange",d:"Gold, the king reasons, conquers what armies cannot hold.",c:[
+    {l:"Corner the grain trade (+15% gold & knowledge)",e:n=>F(n,'trade')},
+    {l:"Bribe the rival courts (+90 power)",e:n=>S[n].infl+=90}]},
+  p3_start:{t:"🐻 The Question of the Serfs",d:"The Tsar's court is split. Rigan is bottomless in men but backward in the sciences. Shall the serfs be freed to modernise the realm — or bound ever tighter?",c:[
+    {l:"Emancipate the serfs and modernise",e:n=>{},next:"p3_reform",delay:26},
+    {l:"Bind the serfs and endure",e:n=>{},next:"p3_bind",delay:26}]},
+  p3_reform:{t:"🐻 The Great Reform",d:"The chains are struck off. A new Rigan stirs — restless, hopeful, and dangerous.",c:[
+    {l:"Found imperial academies (+120 knowledge, +1 Manufacturing)",e:n=>{S[n].rp+=120;if(S[n].tech.industry<6)S[n].tech.industry++;}},
+    {l:"Raise a professional army (+1 Drill)",e:n=>S[n].tech.doctrine++}]},
+  p3_bind:{t:"🐻 The Iron Yoke",d:"The serfs remain bound to the land — and to the muster-rolls of the Tsar.",c:[
+    {l:"Call endless levies (+260 recruits)",e:n=>S[n].mp+=260},
+    {l:"Crush all dissent (+stability)",e:n=>F(n,'spirit')}]},
+  p4_start:{t:"⚖ The Anti-Carak Coalition",d:"Ostan's assembly debates how to meet Carak's claim of reunion. Forge a grand alliance — or raise a wall the eagle cannot breach?",c:[
+    {l:"Forge a grand coalition",e:n=>{},next:"p4_alliance",delay:24},
+    {l:"Build a wall of fortresses",e:n=>{},next:"p4_forts",delay:24}]},
+  p4_alliance:{t:"⚖ The Coalition Convenes",d:"Envoys ride for every court that fears Carngard.",c:[
+    {l:"Subsidise allied armies (−80 gold, warmer relations)",e:n=>{S[n].pp=Math.max(0,S[n].pp-80);for(const m of NIDS)if(m!==n&&m!==2&&alive(m))S[m].rel[n]=(S[m].rel[n]||0)+12;}},
+    {l:"Lead the merchant league (+15% gold & knowledge)",e:n=>F(n,'trade')}]},
+  p4_forts:{t:"⚖ The Northern Wall",d:"If friends prove fickle, stone does not.",c:[
+    {l:"Fortify the frontier (capital fort 5, +defence)",e:n=>{F(n,'def');if(H[capitals[n]])H[capitals[n]].fort=5;}},
+    {l:"Commission a war fleet (+1 Gunnery, naval)",e:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;F(n,'naval');}}]},
+  p5_start:{t:"🎈 The Hermit's Dilemma",d:"Aveon's philosophers have nearly perfected the dream of flight. Shall the republic at last reveal itself to the world — or vanish deeper into its cloisters?",c:[
+    {l:"Take to the skies — perfect human flight",e:n=>{},next:"p5_flight",delay:26},
+    {l:"Remain hidden, perfect the academies",e:n=>{},next:"p5_academy",delay:26}]},
+  p5_flight:{t:"🎈 The Aeronauts Ascend",d:"The first balloons rise over Avenmoor to the gasps of the crowd.",c:[
+    {l:"Form the Aeronaut Corps (+1 Gunnery, air doctrine)",e:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;F(n,'air');}},
+    {l:"Sell the marvels to the great powers (+220 gold)",e:n=>S[n].pp+=220}]},
+  p5_academy:{t:"🎈 The Cloistered Republic",d:"The world is shut out; the lamps of study burn on.",c:[
+    {l:"A century of study (+160 knowledge, +1 Manufacturing)",e:n=>{S[n].rp+=160;if(S[n].tech.industry<6)S[n].tech.industry++;}},
+    {l:"Arm the republic at last (+2 arsenals)",e:n=>S[n].mil+=2}]},
+  p6_start:{t:"🌾 The Peasants Stir",d:"In Javeford the peasants starve while the lords feast, and an uprising smoulders. The crown must choose a side before the Rigan bear strikes.",c:[
+    {l:"Side with the commoners",e:n=>{},next:"p6_commoner",delay:24},
+    {l:"Stand with the noble houses",e:n=>{},next:"p6_noble",delay:24}]},
+  p6_commoner:{t:"🌾 The People's Levy",d:"The peasants, granted dignity, flock to the colours.",c:[
+    {l:"Raise a national levy (+220 recruits, +stability)",e:n=>{S[n].mp+=220;F(n,'spirit');}},
+    {l:"Modern muskets for every man (+1 Gunnery)",e:n=>{if(S[n].tech.gunnery<6)S[n].tech.gunnery++;}}]},
+  p6_noble:{t:"🌾 The Lords' Bargain",d:"The old houses keep their privileges — and their armoured retinues.",c:[
+    {l:"The feudal hosts answer (+1 arsenal, +60 power)",e:n=>{S[n].mil++;S[n].infl+=60;}},
+    {l:"Buy off the peasant leaders (−90 gold, +stability)",e:n=>{S[n].pp=Math.max(0,S[n].pp-90);F(n,'spirit');}}]},
+  p7_start:{t:"🦅 The Mangobi Question",d:"Illyrium rules a conquered people who loathe their masters. As the Emperor eyes Rigan's passes, the restless south must be settled — by fist or by favour.",c:[
+    {l:"Crush all dissent in the south",e:n=>{},next:"p7_crush",delay:26},
+    {l:"Grant the Mangobi autonomy",e:n=>{},next:"p7_autonomy",delay:26}]},
+  p7_crush:{t:"🦅 The Imperial Fist",d:"Garrisons march south; the Emperor's word is law.",c:[
+    {l:"Garrison the south (+1 arsenal, +defence)",e:n=>{S[n].mil++;F(n,'def');}},
+    {l:"Proclaim the new Empire (+70 power)",e:n=>S[n].infl+=70}]},
+  p7_autonomy:{t:"🦅 A Softer Crown",d:"Concessions cool the southern fury — for now.",c:[
+    {l:"Mangobi regiments join the host (+160 recruits)",e:n=>S[n].mp+=160},
+    {l:"Grant trade concessions (+15% gold & knowledge)",e:n=>F(n,'trade')}]},
 };
 const CHAIN_STARTS=["succ_ill","plot_whispers","colony_charter"];
+const NAT_CHAIN={1:"p1_start",2:"p2_start",3:"p3_start",4:"p4_start",5:"p5_start",6:"p6_start",7:"p7_start"};
 let pendingEvent=null, eventWasPaused=false;
 function enqueueChain(n,id,delay){if(CHAINS[id])S[n].chainQ.push({id,t:delay||28});}
 function fireNode(n,node){if(n===PLAYER&&!pendingEvent){pendingEvent={ev:node,n};showEventModal();}else{const ch=node.c[Math.floor(Math.random()*node.c.length)];ch.e(n);if(ch.next)enqueueChain(n,ch.next,ch.delay);}}
 function maybeEvent(n,dt){const s=S[n];if(!s.chainQ)s.chainQ=[];
   if(s.chainQ.length){for(const q of s.chainQ)q.t-=dt;const ready=s.chainQ.find(q=>q.t<=0);if(ready&&!(n===PLAYER&&pendingEvent)){s.chainQ=s.chainQ.filter(q=>q!==ready);fireNode(n,CHAINS[ready.id]);return;}}
-  s.event+=dt;if(s.event>50){s.event=0;if(Math.random()<0.55){if(Math.random()<0.32)fireNode(n,CHAINS[CHAIN_STARTS[Math.floor(Math.random()*CHAIN_STARTS.length)]]);else fireNode(n,EVENTS[Math.floor(Math.random()*EVENTS.length)]);}}}
+  s.event+=dt;if(s.event>50){s.event=0;if(Math.random()<0.58){
+    const lore=NAT_CHAIN[n];
+    if(lore&&!s.loreChain&&CHAINS[lore]&&Math.random()<0.5){s.loreChain=true;fireNode(n,CHAINS[lore]);}
+    else if(Math.random()<0.32)fireNode(n,CHAINS[CHAIN_STARTS[Math.floor(Math.random()*CHAIN_STARTS.length)]]);
+    else fireNode(n,EVENTS[Math.floor(Math.random()*EVENTS.length)]);}}}
 function showEventModal(){if(!pendingEvent)return;const ev=pendingEvent.ev;let h=`<h2>${ev.t}</h2><p>${ev.d}</p>`;ev.c.forEach((c,i)=>{h+=`<button class="btn" data-ev="${i}" style="text-align:center;justify-content:center;margin-bottom:8px">${c.l}</button>`;});document.getElementById('eventBody').innerHTML=h;document.getElementById('eventScreen').classList.add('show');eventWasPaused=paused;paused=true;}
 
 // ===================================================== INPUT
@@ -1026,22 +1123,28 @@ cv.addEventListener('contextmenu',e=>{e.preventDefault();if(selected){selected.p
 document.getElementById('provPanel').addEventListener('click',e=>{const b=e.target.closest('[data-pact]');if(!b||!selectedProv)return;const h=selectedProv,sp=S[PLAYER];
   if(b.dataset.pact==='dev'){const c=40+h.dev*25;if(h.dev<5&&sp.pp>=c){sp.pp-=c;h.dev++;toast(`${h.name} developed to level ${h.dev}`);}}
   else if(b.dataset.pact==='fort'){if(h.fort<5&&sp.pp>=45){sp.pp-=45;h.fort++;toast(`${h.name} fortified to ${h.fort}`);}}
+  else if(b.dataset.pact==='depot'){if(!h.depot&&sp.pp>=65){sp.pp-=65;h.depot=true;toast(`📦 Supply depot built at ${h.name}`);}}
+  else if(b.dataset.pact==='port'){if(!h.port&&isCoastal(h)&&sp.pp>=70){sp.pp-=70;h.port=true;toast(`⚓ Naval port built at ${h.name}`);}}
   renderProvPanel();updateTop();});
 cv.addEventListener('mousemove',e=>{if(!started){return;}const rect=cv.getBoundingClientRect();const sx=cv.width/DPR/rect.width,sy=cv.height/DPR/rect.height;const h=pickHex((e.clientX-rect.left)*sx,(e.clientY-rect.top)*sy);const info=document.getElementById('hexInfo');if(!h){info.style.display='none';return;}
   const owner=h.owner?NATIONS[h.owner].name:(h.land?'Unclaimed':'Sea');const terr=h.land?(TERR[h.terr]?TERR[h.terr].nm:'Land'):'Open Sea';const reg=h.region==='M'?' · Mangobi':h.region==='U'?' · Cruv':'';const here=armyAt(key(h.col,h.row));
-  info.innerHTML=`${h.land?`<b>${h.name}${h.cap?' ✪':h.city?' ✦':''}</b><br>`:''}<span style="color:${h.owner?NATIONS[h.owner].col:'#a99a7e'}">${owner}</span>${h.land?`<br><span style="color:#a99a7e">${terr} · dev ${h.dev}${h.fort?' · fort '+h.fort:''}${h.res?' · '+RES_ICON[h.res]+RES_NAME[h.res]:''}${h.city?(h.cap?' · capital':' · city'):''}${reg}${h.owner&&h.core>0&&h.core!==h.owner?' · <span style="color:#ff9aa7">⚑ occupied</span>':''}</span>`:''}${here?`<br><span style="color:${NATIONS[here.nation].col}">⚔ ${battalions(here)} regiments</span>`:''}`;
+  info.innerHTML=`${h.land?`<b>${h.name}${h.cap?' ✪':h.city?' ✦':''}</b><br>`:''}<span style="color:${h.owner?NATIONS[h.owner].col:'#a99a7e'}">${owner}</span>${h.land?`<br><span style="color:#a99a7e">${terr} · dev ${h.dev}${h.fort?' · fort '+h.fort:''}${h.res?' · '+RES_ICON[h.res]+RES_NAME[h.res]:''}${h.city?(h.cap?' · capital':' · city'):''}${reg}${h.depot?' · <span style="color:#9fe6b0">📦 depot</span>':''}${h.port?' · <span style="color:#7fc6ff">⚓ port</span>':''}${h.owner&&h.core>0&&h.core!==h.owner?' · <span style="color:#ff9aa7">⚑ occupied</span>':''}</span>`:''}${here?`<br><span style="color:${NATIONS[here.nation].col}">⚔ ${battalions(here)} regiments</span>`:''}`;
   info.style.display='block';info.style.left=(e.clientX-rect.left+14)+'px';info.style.top=(e.clientY-rect.top+12)+'px';});
 cv.addEventListener('mouseleave',()=>{document.getElementById('hexInfo').style.display='none';});
 document.getElementById('tabcontent').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||!PLAYER)return;const act=b.dataset.act,s=S[PLAYER];
-  if(act==="con"){const kind=b.dataset.kind,cost=kind==="civ"?60:kind==="mil"?80:45;if(s.pp<10)return toast("Treasury too low");s.conQ.push(kind==="fort"?{kind,hex:selected.key,cost,prog:0}:{kind,cost,prog:0});}
+  if(act==="con"){const kind=b.dataset.kind,cost=kind==="civ"?60:kind==="mil"?80:kind==="depot"?65:kind==="port"?70:45;if(s.pp<10)return toast("Treasury too low");if(kind==="depot"&&H[selected.key]&&H[selected.key].depot)return toast("This province already has a depot");if(kind==="port"&&H[selected.key]&&H[selected.key].port)return toast("This province already has a port");s.conQ.push((kind==="fort"||kind==="depot"||kind==="port")?{kind,hex:selected.key,cost,prog:0}:{kind,cost,prog:0});}
   else if(act==="recruit"){const t=b.dataset.type;if(!unitUnlocked(PLAYER,t)||s.mp<unitStat(PLAYER,t,'mp'))return;s.mp-=unitStat(PLAYER,t,'mp');s.milQ.push({type:t,cost:unitStat(PLAYER,t,'build'),prog:0});}
   else if(act==="wonder"){const id=b.dataset.id;if(s.wonder)return toast("A great work is already underway");if(s.wonders.has(id))return;if(s.pp<10)return toast("Treasury too low");s.wonder=id;s.wonderProg=0;toast("🏛 Great work begun — it will take years");}
   else if(act==="research"){const cat=b.dataset.cat;if(s.research.includes(cat))return;s.research=s.research.filter(x=>x);if(s.research.length>=2)s.research.shift();s.research.push(cat);}
+  else if(act==="opentech"){openTech();return;}
   else if(act==="ideo"){s.ideoKey=b.dataset.key;toast("The government is reconstituted");}
   else if(act==="openfocus"){openFocus();}
   else if(act==="war")declareWar(PLAYER,+b.dataset.n);
   else if(act==="peace")makePeace(PLAYER,+b.dataset.n);
   else if(act==="ally"){if(makeAlliance(PLAYER,+b.dataset.n))toast("Alliance sealed");}
+  else if(act==="pact"){const t=+b.dataset.n;if(s.pacts.has(t)){s.pacts.delete(t);S[t].pacts.delete(PLAYER);toast("Trade pact ended");}else if(!s.war.has(t)){s.pacts.add(t);S[t].pacts.add(PLAYER);s.rel[t]=(s.rel[t]||0)+8;S[t].rel[PLAYER]=(S[t].rel[PLAYER]||0)+8;toast(`🤝 Trade pact signed with ${NATIONS[t].name}`);}}
+  else if(act==="access"){const t=+b.dataset.n;if(s.access.has(t)){s.access.delete(t);toast("Military access revoked");}else{s.access.add(t);S[t].rel[PLAYER]=(S[t].rel[PLAYER]||0)+6;toast(`🚶 Granted ${NATIONS[t].name} passage through your lands`);}}
+  else if(act==="guarantee"){const t=+b.dataset.n;if(s.guarantee.has(t)){s.guarantee.delete(t);toast("Guarantee dropped");}else{s.guarantee.add(t);S[t].rel[PLAYER]=(S[t].rel[PLAYER]||0)+10;toast(`🛡 You guarantee the independence of ${NATIONS[t].name}`);}}
   else if(act==="justify"){if(!s.justify)s.justify={t:+b.dataset.n,prog:0,need:25};}
   else if(act==="conf"){openPeace(+b.dataset.n);}
   else if(act==="support"){const reg=b.dataset.reg,owner=regionOwner(reg),nn=reg==='M'?9:8;const cost=hasAdv(PLAYER,'spymaster')?40:50,gain=hasAdv(PLAYER,'spymaster')?30:22;if(owner&&owner!==PLAYER&&s.pp>=cost&&S[nn].elim){s.pp-=cost;S[nn].support=Math.min(100,(S[nn].support||0)+gain);S[nn].supporter=PLAYER;S[owner].rel[PLAYER]=(S[owner].rel[PLAYER]||0)-12;S[owner].stab=Math.max(0,S[owner].stab-3);toast(`You fund the ${NATIONS[nn].name} uprising — now ${Math.round(S[nn].support)}%`);}}
@@ -1083,33 +1186,48 @@ function openDesign(){if(!PLAYER)return;renderDesign();document.getElementById('
 let peaceTarget=null,peaceSel=new Set();
 function occHeld(att,def){let c=0;for(const k in H){const h=H[k];if(h.land&&h.core===def&&h.owner===att)c++;}return c;}
 function warScore(att,def){const occ=occHeld(att,def);let defCore=0;for(const k in H){const h=H[k];if(h.land&&h.core===def)defCore++;}const frac=defCore?occ/defCore:0;let sc=Math.floor(occ*1.1+frac*6);if(S[def].stab<25)sc+=2;if(provs(def)<S[def].startProv*0.6)sc+=2;return Math.max(0,sc);}
-function peaceOptions(e){const occ=occHeld(PLAYER,e),opts=[];
-  if(occ>0)opts.push({id:'annex',cost:occ,label:`Annex occupied territory (${occ} province${occ>1?'s':''})`,desc:'Core the lands your armies hold so they become loyal provinces. Unannexed land stays as restless occupied territory.'});
-  if(provs(e)>0&&provs(e)<=provs(PLAYER)*0.6)opts.push({id:'puppet',cost:5,label:`Install a puppet government`,desc:`${NATIONS[e].name} becomes your vassal and pays tribute. (Occupied land returns to them.)`});
-  opts.push({id:'repar',cost:2,label:'War reparations',desc:'Drain their treasury — gold and knowledge for you.'});
+function provCost(h){return (h.owner===PLAYER?1:2)+(h.city?2:0)+(h.dev>=2?1:0)+(h.cap?2:0);}
+function peaceProvs(e){return Object.values(H).filter(h=>h.land&&h.core===e).sort((a,b)=>((b.owner===PLAYER)-(a.owner===PLAYER))||(b.cap-a.cap)||(b.city-a.city));}
+function peaceTerms(e){const opts=[];
+  if(provs(e)>0&&provs(e)<=provs(PLAYER)*0.6)opts.push({id:'puppet',cost:5,label:'Install a puppet government',desc:`${NATIONS[e].name} becomes your vassal and pays tribute — you take no land.`});
+  opts.push({id:'repar',cost:2,label:'War reparations (lump sum)',desc:'Seize gold and knowledge from their treasury at once.'});
+  opts.push({id:'indemnity',cost:1,label:'War indemnity (tribute, 3 years)',desc:'They pay you gold every day for three years.'});
   if(regionOwner('U')===e&&S[8].elim)opts.push({id:'free8',cost:3,label:'Free Cruv',desc:'Force the release of an independent Cruv.'});
   if(regionOwner('M')===e&&S[9].elim)opts.push({id:'free9',cost:3,label:'Free Mangobi',desc:'Force the release of an independent Mangobi.'});
   return opts;}
-function peaceSpent(e){let t=0;peaceOptions(e).forEach(o=>{if(peaceSel.has(o.id))t+=o.cost;});return t;}
+function peaceSpent(e){let t=0;peaceProvs(e).forEach(h=>{if(peaceSel.has('prov:'+key(h.col,h.row)))t+=provCost(h);});peaceTerms(e).forEach(o=>{if(peaceSel.has(o.id))t+=o.cost;});return t;}
 function openPeace(e){if(!alive(e)||!S[PLAYER].war.has(e))return;peaceTarget=e;peaceSel=new Set();paused=true;document.getElementById('pause').textContent='▶';renderPeace();document.getElementById('peaceScreen').classList.add('show');}
-function renderPeace(){const e=peaceTarget;if(!e)return;const budget=warScore(PLAYER,e),spent=peaceSpent(e),rem=budget-spent;
+function renderPeace(){const e=peaceTarget;if(!e)return;const budget=warScore(PLAYER,e),spent=peaceSpent(e),rem=budget-spent,pup=peaceSel.has('puppet');
   let h=`<h2 style="margin-bottom:2px">⚖ Peace Conference</h2><div class="small" style="margin-bottom:8px">Terms dictated to ${flagHTML(e)} <b>${NATIONS[e].name}</b></div>`;
   h+=`<div class="card" style="display:flex;justify-content:space-between"><span>War score</span><b style="color:#d8af4e">${spent} / ${budget}</b></div>`;
   if(budget===0)h+=`<div class="small" style="margin:6px 0;color:#ff9aa7">You haven’t beaten them enough to demand anything. Occupy their land first, or sign a white peace.</div>`;
-  peaceOptions(e).forEach(o=>{const on=peaceSel.has(o.id),afford=on||o.cost<=rem;
+  const provsE=peaceProvs(e);
+  if(provsE.length){h+=`<h4 class="sec">Cede territory${pup?' <span class="small">(disabled — puppet takes all)</span>':''}</h4><div style="max-height:190px;overflow:auto;margin:0 -2px">`;
+    provsE.forEach(hx=>{const id='prov:'+key(hx.col,hx.row),on=peaceSel.has(id),c=provCost(hx),held=hx.owner===PLAYER,afford=!pup&&(on||c<=rem);
+      h+=`<button class="btn ${on?'gold':''}" data-pd="${id}" ${afford?'':'disabled'} style="text-align:left;${afford?'':'opacity:.4'}"><span>${on?'☑ ':'☐ '}${hx.name}${hx.cap?' ✪':hx.city?' ✦':''} <span class="small" style="opacity:.7">${held?'occupied':'enemy-held'}${hx.res?' · '+RES_NAME[hx.res]:''}</span></span><span class="cost">${c}</span></button>`;});
+    h+=`</div>`;}
+  h+=`<h4 class="sec">Other terms</h4>`;
+  peaceTerms(e).forEach(o=>{const on=peaceSel.has(o.id),landTerm=(o.id!=='puppet'&&o.id!=='repar'&&o.id!=='indemnity'),disabled=pup&&landTerm,afford=on||(!disabled&&o.cost<=rem);
     h+=`<button class="btn ${on?'gold':''}" data-pd="${o.id}" ${afford?'':'disabled'} style="text-align:left;align-items:flex-start;${afford?'':'opacity:.4'}"><span>${on?'☑ ':'☐ '}${o.label}</span><span class="cost">${o.cost}</span></button><div class="small" style="margin:-4px 0 7px;opacity:.85">${o.desc}</div>`;});
   h+=`<div style="display:flex;gap:8px;margin-top:6px"><button class="go" id="peaceSign" style="flex:1">Sign treaty</button><button class="btn" id="peaceCancel" style="flex:0 0 auto">Cancel</button></div>`;
   document.getElementById('peaceBody').innerHTML=h;}
 function closePeace(){document.getElementById('peaceScreen').classList.remove('show');peaceTarget=null;peaceSel=new Set();}
 function signPeace(){const e=peaceTarget;if(!e)return;const sel=peaceSel;
   if(sel.has('puppet')){for(const k in H){const h=H[k];if(h.land&&h.core===e&&h.owner===PLAYER)h.owner=e;}makePuppet(PLAYER,e);}
-  else{if(sel.has('annex')){for(const k in H){const h=H[k];if(h.land&&h.core===e&&h.owner===PLAYER)h.core=PLAYER;}}
+  else{for(const id of sel){if(id.indexOf('prov:')===0){const k=id.slice(5);if(H[k]&&H[k].core===e){H[k].owner=PLAYER;H[k].core=PLAYER;}}}
     if(sel.has('free8'))liberate(8,e,false,null);if(sel.has('free9'))liberate(9,e,false,null);}
   if(sel.has('repar')){S[PLAYER].pp+=120+provs(e)*4;S[PLAYER].rp+=60;}
-  const terms=[...sel].length?`extracting harsh terms`:`with no demands`;
+  if(sel.has('indemnity'))REPAR.push({from:e,to:PLAYER,days:365*3,perDay:Math.max(0.5,provs(e)*0.35)});
+  const took=[...sel].filter(x=>x.indexOf('prov:')===0).length;
+  const terms=took?`annexing ${took} province${took>1?'s':''}`:([...sel].length?`extracting terms`:`with no demands`);
   makePeace(PLAYER,e,true);chron(`⚖ Treaty of Peace: ${NATIONS[PLAYER].name} dictates terms to ${NATIONS[e].name}, ${terms}.`);toast(`⚖ Treaty signed with ${NATIONS[e].name}`);
   closePeace();renderTab();updateTop();}
-document.getElementById('peaceScreen').addEventListener('click',e=>{const b=e.target.closest('[data-pd]');if(b){const id=b.dataset.pd;if(peaceSel.has(id))peaceSel.delete(id);else{if(id==='puppet'){peaceSel.delete('annex');peaceSel.delete('free8');peaceSel.delete('free9');}else peaceSel.delete('puppet');peaceSel.add(id);}renderPeace();return;}
+document.getElementById('peaceScreen').addEventListener('click',e=>{const b=e.target.closest('[data-pd]');if(b){const id=b.dataset.pd;
+    if(peaceSel.has(id))peaceSel.delete(id);
+    else{if(id==='puppet'){[...peaceSel].forEach(x=>{if(x.indexOf('prov:')===0||x==='free8'||x==='free9')peaceSel.delete(x);});}
+      else if(id.indexOf('prov:')===0||id==='free8'||id==='free9'){peaceSel.delete('puppet');}
+      peaceSel.add(id);}
+    renderPeace();return;}
   if(e.target.id==='peaceSign')signPeace();else if(e.target.id==='peaceCancel'||e.target.id==='peaceScreen')closePeace();});
 function econReport(n){const s=S[n],id=ideoOf(n),pv=provs(n);const indMul=1+0.08*s.tech.industry,trade=s.foc.trade?1.15:1;
   const eco=ECO_LAWS[s.ecoLaw]||ECO_LAWS.peace,cons=CONS_LAWS[s.consLaw]||CONS_LAWS.limited;
@@ -1157,6 +1275,23 @@ function openEco(){if(!PLAYER)return;const R=econReport(PLAYER),s=S[PLAYER];
   h+=`</div><button class="go" id="ecoClose">Close</button>`;
   document.getElementById('ecoBody').innerHTML=h;document.getElementById('ecoScreen').classList.add('show');}
 document.getElementById('ecoScreen').addEventListener('click',e=>{if(e.target.id==='ecoClose'||e.target.id==='ecoScreen')document.getElementById('ecoScreen').classList.remove('show');});
+const TECH_ICON={musket:"🎯",gunnery:"💥",horse:"🐎",industry:"🏭",doctrine:"📐"};
+const ERAS=[{n:"Age of the Flintlock",lv:[1,2]},{n:"Age of the Line",lv:[3,4]},{n:"Age of Revolution",lv:[5,6]}];
+function unitsAt(cat,lvl){return UKEYS.filter(t=>UNIT[t].req&&UNIT[t].req.tech===cat&&UNIT[t].req.lvl===lvl);}
+function openTech(){if(!PLAYER)return;renderTechTree();document.getElementById('techScreen').classList.add('show');}
+function renderTechTree(){if(!PLAYER)return;const s=S[PLAYER];
+  let h=`<h2 style="margin-bottom:2px">🔬 The Sciences</h2><div class="small" style="margin-bottom:8px">${NATIONS[PLAYER].name} · ${Math.floor(s.rp)} knowledge · 2 research slots · Eras: <b>1–2</b> Flintlock · <b>3–4</b> Line · <b>5–6</b> Revolution. Tap a glowing node to study it.</div>`;
+  for(const cat in TECHS){const lvl=s.tech[cat],studying=s.research.includes(cat),T=TECHS[cat],maxed=lvl>=T.max;
+    h+=`<div style="margin:8px 0"><div class="kv"><b>${TECH_ICON[cat]} ${T.name}</b><span class="small">${maxed?'<span style="color:#9fe6b0">MAX</span>':studying?'<span style="color:#7fc6ff">studying…</span>':''} · ${lvl}/${T.max}</span></div><div class="small" style="opacity:.7;margin:-2px 0 4px">${T.desc}</div><div style="display:flex;gap:3px;align-items:stretch">`;
+    for(let L=1;L<=T.max;L++){const done=lvl>=L,next=L===lvl+1,active=next&&studying;
+      const bg=done?'#5a4a1c':active?'#23485f':next?'#1f1a10':'#141009',bd=done?'#d8af4e':active?'#7fc6ff':next?'#d8af4e':'#2a2417',col=done?'#f3eedd':active?'#bfe3ff':next?'#d8af4e':'#5a5444';
+      const us=unitsAt(cat,L);
+      h+=`<div ${next?`data-tech="${cat}" `:''}style="${next?'cursor:pointer;':''}flex:1;min-width:32px;text-align:center;padding:5px 2px;border:1px solid ${bd};border-radius:5px;background:${bg};color:${col}" title="${TECHS[cat].name} ${L}${us.length?' — unlocks '+us.map(t=>UNIT[t].nm||UNIT[t].ab).join(', '):''}"><div style="font-weight:700;font-size:12px">${L}</div>${us.length?`<div style="font-size:8px;opacity:.9">${us.map(t=>UNIT[t].ab).join('·')}</div>`:''}</div>`;
+      if(L%2===0&&L<T.max)h+=`<div style="width:8px;text-align:center;color:#4a4434;font-size:9px;align-self:center">›</div>`;}
+    h+=`</div></div>`;}
+  h+=`<button class="go" id="techClose" style="margin-top:6px">Close</button>`;
+  document.getElementById('techBody').innerHTML=h;}
+document.getElementById('techScreen').addEventListener('click',e=>{const b=e.target.closest('[data-tech]');if(b){const cat=b.dataset.tech,s=S[PLAYER];s.research=s.research.filter(c=>c&&s.tech[c]<TECHS[c].max);if(!s.research.includes(cat)){if(s.research.length<2)s.research.push(cat);else s.research[s.research.length-1]=cat;}toast(`📚 Now studying ${TECHS[cat].name}`);renderTechTree();renderTab();return;}if(e.target.id==='techClose'||e.target.id==='techScreen')document.getElementById('techScreen').classList.remove('show');});
 document.getElementById('designBtn').addEventListener('click',openDesign);
 document.getElementById('eventBody').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b||!pendingEvent)return;const n=pendingEvent.n,ch=pendingEvent.ev.c[+b.dataset.ev];ch.e(n);if(ch.next)enqueueChain(n,ch.next,ch.delay);chron(`📜 ${pendingEvent.ev.t}: ${NATIONS[n].name} chose "${ch.l}"`);pendingEvent=null;document.getElementById('eventScreen').classList.remove('show');paused=eventWasPaused;document.getElementById('pause').textContent=paused?'▶':'❚❚';renderTab();updateTop();});
 document.getElementById('designScreen').addEventListener('click',e=>{if(e.target.id==='designScreen')e.currentTarget.classList.remove('show');});
@@ -1166,14 +1301,15 @@ document.getElementById('designBody').addEventListener('click',e=>{const b=e.tar
   const sign=cmd[0],p=cmd.slice(1).split('.'),obj=s.des.custom[p[0]],key=p[1],rem=desPts(PLAYER)-desSpent(PLAYER);
   if(sign==="+"){if(rem>0)obj[key]++;}else if(obj[key]>0)obj[key]--;
   renderDesign();});
-function saveGame(){if(!PLAYER||!started){toast('No campaign to save');return;}try{const snap={v:2,time,PLAYER,rot:ROT,speed,chronicle,hex:{},S:{},armies:armies.map(a=>Object.assign({},a)),capitals};
-  for(const k in H){const h=H[k];snap.hex[k]={o:h.owner,c:h.core,f:h.fort,d:h.dev};}
-  for(const n of NIDS){const s=S[n];snap.S[n]=Object.assign({},s,{war:[...s.war],ally:[...s.ally],puppets:[...s.puppets],cb:[...s.cb],cabinet:[...s.cabinet],focDone:[...s.focDone],wonders:[...s.wonders]});}
+function saveGame(){if(!PLAYER||!started){toast('No campaign to save');return;}try{const snap={v:2,time,PLAYER,rot:ROT,speed,chronicle,weather,repar:REPAR,hex:{},S:{},armies:armies.map(a=>Object.assign({},a)),capitals};
+  for(const k in H){const h=H[k];snap.hex[k]={o:h.owner,c:h.core,f:h.fort,d:h.dev,p:h.depot?1:0,q:h.port?1:0};}
+  for(const n of NIDS){const s=S[n];snap.S[n]=Object.assign({},s,{war:[...s.war],ally:[...s.ally],puppets:[...s.puppets],cb:[...s.cb],cabinet:[...s.cabinet],focDone:[...s.focDone],wonders:[...s.wonders],access:[...s.access],guarantee:[...s.guarantee],pacts:[...s.pacts]});}
   localStorage.setItem('batalon_save',JSON.stringify(snap));toast('💾 Campaign saved');}catch(e){toast('Save failed — '+e.message);}}
 function loadGame(){try{const raw=localStorage.getItem('batalon_save');if(!raw){toast('No saved campaign found');return;}const snap=JSON.parse(raw);
   genWorld();
-  for(const k in snap.hex){if(H[k]){const o=snap.hex[k];H[k].owner=o.o;H[k].core=o.c;H[k].fort=o.f;H[k].dev=o.d;}}
-  for(const n of NIDS){const sn=snap.S[n];if(!sn)continue;const s=S[n];Object.assign(s,sn);s.war=new Set(sn.war);s.ally=new Set(sn.ally);s.puppets=new Set(sn.puppets);s.cb=new Set(sn.cb);s.cabinet=new Set(sn.cabinet);s.focDone=new Set(sn.focDone);s.wonders=new Set(sn.wonders||[]);}
+  for(const k in snap.hex){if(H[k]){const o=snap.hex[k];H[k].owner=o.o;H[k].core=o.c;H[k].fort=o.f;H[k].dev=o.d;H[k].depot=!!o.p;H[k].port=!!o.q;}}
+  if(snap.weather)weather=snap.weather;REPAR=snap.repar||[];
+  for(const n of NIDS){const sn=snap.S[n];if(!sn)continue;const s=S[n];Object.assign(s,sn);s.war=new Set(sn.war);s.ally=new Set(sn.ally);s.puppets=new Set(sn.puppets);s.cb=new Set(sn.cb);s.cabinet=new Set(sn.cabinet);s.focDone=new Set(sn.focDone);s.wonders=new Set(sn.wonders||[]);s.access=new Set(sn.access||[]);s.guarantee=new Set(sn.guarantee||[]);s.pacts=new Set(sn.pacts||[]);if(!s.chainQ)s.chainQ=[];}
   armies=snap.armies.map(a=>Object.assign({},a));capitals=snap.capitals;time=snap.time;PLAYER=snap.PLAYER;ROT=snap.rot||0;speed=snap.speed||1;chronicle=snap.chronicle||[];
   started=true;gameOver=false;paused=true;selected=null;selectedProv=null;
   rebuildProjection();resize();
