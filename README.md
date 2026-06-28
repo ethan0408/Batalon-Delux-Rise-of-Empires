@@ -2,7 +2,6 @@
 
 A 1700s real-time grand-strategy game set on the fictional continent of **Aurca**. Lead one of seven powers — Carak, Ostana, Illyria, Rigan, Aveon, Javein, or the corsair isle of Pirati — and conquer the continent through war, diplomacy, intrigue, and statecraft. Built as a single, self-contained HTML file — no installs, no dependencies.
 
-▶ **Play:** open `index.html` in any browser. (Or enable GitHub Pages — see below — for a live link.)
 
 ## Features
 - **Isometric 3D map** with rotation, named provinces & cities, terrain (mountains, hills, forest, marsh, rivers), seasons, and winter attrition.
